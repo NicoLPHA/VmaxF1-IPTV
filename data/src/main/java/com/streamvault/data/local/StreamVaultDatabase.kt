@@ -49,7 +49,7 @@ import com.streamvault.data.local.entity.*
         XtreamIndexJobEntity::class,
         XtreamLiveOnboardingStateEntity::class
     ],
-    version = 52,
+    version = 53,
     exportSchema = true   // ← was false; schema JSON now tracked in version control
 )
 @TypeConverters(RoomEnumConverters::class)
@@ -2575,6 +2575,32 @@ abstract class StreamVaultDatabase : RoomDatabase() {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL("ALTER TABLE providers ADD COLUMN xtream_live_sync_mode TEXT NOT NULL DEFAULT 'AUTO'")
                 validateForeignKeys(database, "providers")
+            }
+        }
+
+        val MIGRATION_52_53 = object : Migration(52, 53) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Extend movies FTS to also index cast and genre
+                database.execSQL("DROP TRIGGER IF EXISTS movies_ai")
+                database.execSQL("DROP TRIGGER IF EXISTS movies_ad")
+                database.execSQL("DROP TRIGGER IF EXISTS movies_au")
+                database.execSQL("DROP TABLE IF EXISTS movies_fts")
+                database.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS movies_fts USING fts4(name, cast, genre, content='movies')")
+                database.execSQL("INSERT INTO movies_fts(rowid, name, cast, genre) SELECT id, name, cast, genre FROM movies")
+                database.execSQL("CREATE TRIGGER IF NOT EXISTS movies_ai AFTER INSERT ON movies BEGIN INSERT INTO movies_fts(rowid, name, cast, genre) VALUES (new.id, new.name, new.cast, new.genre); END")
+                database.execSQL("CREATE TRIGGER IF NOT EXISTS movies_ad AFTER DELETE ON movies BEGIN DELETE FROM movies_fts WHERE rowid = old.id; END")
+                database.execSQL("CREATE TRIGGER IF NOT EXISTS movies_au AFTER UPDATE OF name, cast, genre ON movies BEGIN UPDATE movies_fts SET name = new.name, cast = new.cast, genre = new.genre WHERE rowid = old.id; END")
+
+                // Extend series FTS to also index cast and genre
+                database.execSQL("DROP TRIGGER IF EXISTS series_ai")
+                database.execSQL("DROP TRIGGER IF EXISTS series_ad")
+                database.execSQL("DROP TRIGGER IF EXISTS series_au")
+                database.execSQL("DROP TABLE IF EXISTS series_fts")
+                database.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS series_fts USING fts4(name, cast, genre, content='series')")
+                database.execSQL("INSERT INTO series_fts(rowid, name, cast, genre) SELECT id, name, cast, genre FROM series")
+                database.execSQL("CREATE TRIGGER IF NOT EXISTS series_ai AFTER INSERT ON series BEGIN INSERT INTO series_fts(rowid, name, cast, genre) VALUES (new.id, new.name, new.cast, new.genre); END")
+                database.execSQL("CREATE TRIGGER IF NOT EXISTS series_ad AFTER DELETE ON series BEGIN DELETE FROM series_fts WHERE rowid = old.id; END")
+                database.execSQL("CREATE TRIGGER IF NOT EXISTS series_au AFTER UPDATE OF name, cast, genre ON series BEGIN UPDATE series_fts SET name = new.name, cast = new.cast, genre = new.genre WHERE rowid = old.id; END")
             }
         }
     }

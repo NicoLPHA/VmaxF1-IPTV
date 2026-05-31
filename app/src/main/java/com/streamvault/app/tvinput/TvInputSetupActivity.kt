@@ -43,7 +43,7 @@ import com.streamvault.app.ui.theme.ErrorColor
 import com.streamvault.app.ui.theme.OnBackground
 import com.streamvault.app.ui.theme.OnSurfaceDim
 import com.streamvault.app.ui.theme.Primary
-import com.streamvault.app.ui.theme.StreamVaultTheme
+import com.streamvault.app.ui.theme.VmaxTheme
 import com.streamvault.app.ui.theme.SurfaceElevated
 import com.streamvault.domain.model.Provider
 import com.streamvault.domain.repository.ProviderRepository
@@ -67,7 +67,7 @@ class TvInputSetupActivity : ComponentActivity() {
             ?: ComponentName(this, StreamVaultTvInputService::class.java).flattenToShortString()
         viewModel.startSetup(inputId)
         setContent {
-            StreamVaultTheme {
+            VmaxTheme {
                 TvInputSetupRoute(
                     onOpenProviderSetup = {
                         startActivity(

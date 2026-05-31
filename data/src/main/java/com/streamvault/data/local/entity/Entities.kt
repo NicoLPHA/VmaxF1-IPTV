@@ -323,13 +323,17 @@ data class ChannelFtsEntity(
 @Fts4(contentEntity = MovieEntity::class)
 @Entity(tableName = "movies_fts")
 data class MovieFtsEntity(
-    val name: String
+    val name: String,
+    val cast: String?,
+    val genre: String?
 )
 
 @Fts4(contentEntity = SeriesEntity::class)
 @Entity(tableName = "series_fts")
 data class SeriesFtsEntity(
-    val name: String
+    val name: String,
+    val cast: String?,
+    val genre: String?
 )
 
 @Entity(

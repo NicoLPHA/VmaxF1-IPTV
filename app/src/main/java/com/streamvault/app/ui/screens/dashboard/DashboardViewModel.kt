@@ -7,6 +7,7 @@ import com.streamvault.app.ui.model.orderedByRequestedRawIds
 import com.streamvault.data.preferences.PreferencesRepository
 import com.streamvault.data.sync.SyncManager
 import com.streamvault.app.update.AppUpdateInstaller
+import com.streamvault.app.update.GitHubReleaseChecker
 import com.streamvault.domain.model.ActiveLiveSource
 import com.streamvault.domain.model.Category
 import com.streamvault.domain.model.Channel
@@ -55,6 +56,7 @@ import com.streamvault.domain.util.AdultContentVisibilityPolicy
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @HiltViewModel
@@ -73,10 +75,12 @@ class DashboardViewModel @Inject constructor(
     private val getCustomCategories: GetCustomCategories,
     private val syncManager: SyncManager,
     private val appUpdateInstaller: AppUpdateInstaller,
-    private val recordingManager: RecordingManager
+    private val recordingManager: RecordingManager,
+    private val gitHubReleaseChecker: GitHubReleaseChecker
 ) : ViewModel() {
     private companion object {
         const val FAVORITE_CHANNEL_LIMIT = 12
+        private const val FOREGROUND_UPDATE_CHECK_INTERVAL_MS = 60L * 60L * 1000L // 1 hour
         const val RECENT_CHANNEL_LIMIT = 12
         const val CONTINUE_WATCHING_LIMIT = 12
         const val MOVIE_SHELF_LIMIT = 12
@@ -574,6 +578,29 @@ class DashboardViewModel @Inject constructor(
             }
         }
         return 0
+    }
+
+    fun checkForUpdatesOnResume() {
+        viewModelScope.launch {
+            val lastChecked = preferencesRepository.lastAppUpdateCheckTimestamp.first()
+            val now = System.currentTimeMillis()
+            if (lastChecked != null && now - lastChecked < FOREGROUND_UPDATE_CHECK_INTERVAL_MS) return@launch
+            preferencesRepository.setLastAppUpdateCheckTimestamp(now)
+            when (val result = gitHubReleaseChecker.fetchLatestRelease()) {
+                is com.streamvault.domain.model.Result.Success -> {
+                    val release = result.data
+                    preferencesRepository.setCachedAppUpdateRelease(
+                        versionName = release.versionName,
+                        versionCode = release.versionCode,
+                        releaseUrl = release.releaseUrl,
+                        downloadUrl = release.downloadUrl,
+                        releaseNotes = release.releaseNotes,
+                        publishedAt = release.publishedAt
+                    )
+                }
+                else -> Unit
+            }
+        }
     }
 
     fun installDownloadedUpdate() {

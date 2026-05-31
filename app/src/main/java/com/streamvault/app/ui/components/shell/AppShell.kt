@@ -838,6 +838,7 @@ private fun buildDestinationItems(): List<DestinationItem> = listOf(
     DestinationItem(Routes.MOVIES, R.string.nav_movies, Icons.Default.Star),
     DestinationItem(Routes.SERIES, R.string.nav_series, Icons.Default.Menu),
     DestinationItem(Routes.EPG, R.string.nav_epg, Icons.Default.Info),
+    DestinationItem(Routes.F1, R.string.nav_f1, F1FlagIcon),
     DestinationItem(Routes.SEARCH, R.string.search_title, Icons.Default.Search),
     DestinationItem(Routes.PLUGINS, R.string.nav_plugins, PluginBlocksIcon),
     DestinationItem(Routes.SETTINGS, R.string.nav_settings, Icons.Default.Settings)
@@ -875,3 +876,51 @@ private val PluginBlocksIcon: ImageVector
     }
 
 private var _pluginBlocksIcon: ImageVector? = null
+
+private val F1FlagIcon: ImageVector
+    get() {
+        if (_f1FlagIcon != null) return _f1FlagIcon!!
+        _f1FlagIcon = ImageVector.Builder(
+            name = "F1Flag",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                // Flag pole
+                moveTo(4f, 2f)
+                horizontalLineTo(6f)
+                verticalLineTo(22f)
+                horizontalLineTo(4f)
+                close()
+                // Flag body top-left block
+                moveTo(6f, 2f)
+                horizontalLineTo(13f)
+                verticalLineTo(8f)
+                horizontalLineTo(6f)
+                close()
+                // Flag body top-right block
+                moveTo(13f, 2f)
+                horizontalLineTo(20f)
+                verticalLineTo(8f)
+                horizontalLineTo(13f)
+                close()
+                // Flag body bottom-left block (offset for checkered look)
+                moveTo(6f, 8f)
+                horizontalLineTo(13f)
+                verticalLineTo(14f)
+                horizontalLineTo(6f)
+                close()
+                // Flag body bottom-right block
+                moveTo(13f, 8f)
+                horizontalLineTo(20f)
+                verticalLineTo(14f)
+                horizontalLineTo(13f)
+                close()
+            }
+        }.build()
+        return _f1FlagIcon!!
+    }
+
+private var _f1FlagIcon: ImageVector? = null

@@ -62,6 +62,7 @@ import com.streamvault.domain.repository.SyncMetadataRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -666,6 +667,7 @@ class SyncManager @Inject constructor(
                     SyncRepairSection.SERIES -> syncSeriesOnly(provider, onProgress)
                 }
             }
+            providerDao.updateSyncTime(providerId, System.currentTimeMillis())
             updateSyncStatusMetadata(
                 providerId = providerId,
                 status = if (outcome.partial) "PARTIAL" else "SUCCESS"
@@ -2276,7 +2278,9 @@ class SyncManager @Inject constructor(
                 )
             }
             progress(provider.id, onProgress, "Resolving EPG mappings...")
-            epgSourceRepository.resolveForProvider(provider.id, hiddenLiveCategoryIds)
+            withTimeout(3 * 60 * 1000L) {
+                epgSourceRepository.resolveForProvider(provider.id, hiddenLiveCategoryIds)
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -2308,7 +2312,9 @@ class SyncManager @Inject constructor(
                 )
             }
             progress(provider.id, onProgress, "Resolving EPG mappings...")
-            epgSourceRepository.resolveForProvider(provider.id, hiddenLiveCategoryIds)
+            withTimeout(3 * 60 * 1000L) {
+                epgSourceRepository.resolveForProvider(provider.id, hiddenLiveCategoryIds)
+            }
             return
         }
         val epgUrl = when (provider.type) {

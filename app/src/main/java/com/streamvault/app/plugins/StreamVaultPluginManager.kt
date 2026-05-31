@@ -153,7 +153,7 @@ class StreamVaultPluginManager @Inject constructor(
     suspend fun loadPluginConfiguration(plugin: InstalledStreamVaultPlugin): Result<PluginConfigurationSnapshot> =
         withContext(Dispatchers.IO) {
             if (!plugin.manifest.supportsHostRenderedConfiguration) {
-                return@withContext Result.error("This plugin does not expose a StreamVault configuration schema")
+                return@withContext Result.error("This plugin does not expose a Vmax IPTV configuration schema")
             }
 
             val schemaResponse = runCatching {
@@ -525,7 +525,7 @@ class StreamVaultPluginManager @Inject constructor(
             ?: StreamVaultPluginManifest(
                 id = packageName,
                 name = appLabel.ifBlank { packageName },
-                description = "StreamVault plugin"
+                description = "Vmax IPTV plugin"
             )
         val status = runCatching {
             kotlinx.coroutines.runBlocking(Dispatchers.IO) {
@@ -613,7 +613,7 @@ class StreamVaultPluginManager @Inject constructor(
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(settingsIntent)
-            return Result.error("Allow installs from StreamVault, then choose the plugin APK again")
+            return Result.error("Allow installs from Vmax IPTV, then choose the plugin APK again")
         }
 
         val apkUri = FileProvider.getUriForFile(

@@ -172,7 +172,7 @@ fun HomeScreen(
         340.dp
     }
     val channelRowHeight = when (uiState.liveTvChannelMode) {
-        LiveTvChannelMode.COMFORTABLE -> 92.dp
+        LiveTvChannelMode.COMFORTABLE -> 108.dp
         LiveTvChannelMode.COMPACT -> 54.dp
         LiveTvChannelMode.PRO -> 52.dp
     }
@@ -586,6 +586,19 @@ fun HomeScreen(
                         }
                     }
                     pendingRestoreTarget = null
+                }
+
+                // Debounced focus-based preview for the inline overlay (non-PRO mode only)
+                LaunchedEffect(lastFocusedChannelId, isProMode, isReorderMode) {
+                    if (isProMode || isReorderMode || lastFocusedChannelId == null) return@LaunchedEffect
+                    kotlinx.coroutines.delay(350)
+                    val channel = uiState.filteredChannels.firstOrNull { it.id == lastFocusedChannelId }
+                    if (channel != null) viewModel.previewChannel(channel)
+                }
+
+                // Clear auxiliary preview when switching into PRO mode (PRO manages its own preview on click)
+                LaunchedEffect(isProMode) {
+                    if (isProMode) viewModel.clearPreview()
                 }
 
                 FocusRestoreHost(
@@ -1275,6 +1288,19 @@ fun HomeScreen(
                 }
             }
         }
+        }
+
+        // Floating inline preview overlay — visible in COMFORTABLE and COMPACT modes
+        if (!isProMode && !isReorderMode && previewChannel != null) {
+            InlinePreviewOverlay(
+                channel = previewChannel,
+                playerEngine = uiState.previewPlayerEngine,
+                isLoading = uiState.isPreviewLoading,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 80.dp, end = 24.dp)
+                    .width(300.dp)
+            )
         }
 
         SnackbarHost(

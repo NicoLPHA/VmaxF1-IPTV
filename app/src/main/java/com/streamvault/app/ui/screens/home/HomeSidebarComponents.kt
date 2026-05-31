@@ -264,6 +264,60 @@ internal fun LivePreviewPane(
 }
 
 @Composable
+internal fun InlinePreviewOverlay(
+    channel: Channel?,
+    playerEngine: PlayerEngine?,
+    isLoading: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val renderSurfaceType by (playerEngine?.renderSurfaceType)?.collectAsStateWithLifecycle(
+        initialValue = PlayerRenderSurfaceType.SURFACE_VIEW
+    ) ?: remember { mutableStateOf(PlayerRenderSurfaceType.SURFACE_VIEW) }
+
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        colors = SurfaceDefaults.colors(containerColor = Color.Black.copy(alpha = 0.90f))
+    ) {
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f)
+                    .background(Color.Black, RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (channel != null && playerEngine != null) {
+                    PlayerRenderView(
+                        playerEngine = playerEngine,
+                        resizeMode = PlayerSurfaceResizeMode.FIT,
+                        surfaceType = renderSurfaceType,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                if (isLoading && channel != null) {
+                    CircularProgressIndicator(
+                        color = Primary,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            if (channel != null) {
+                Text(
+                    text = channel.name,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = OnSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
 internal fun CategoryItem(
     category: Category,
     isSelected: Boolean,

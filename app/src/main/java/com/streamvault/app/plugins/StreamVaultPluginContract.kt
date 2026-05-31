@@ -3,17 +3,17 @@ package com.streamvault.app.plugins
 object StreamVaultPluginContract {
     const val API_VERSION = 1
 
-    const val ACTION_PLUGIN_SERVICE = "com.streamvault.plugin.API"
-    const val META_MANIFEST_JSON = "com.streamvault.plugin.MANIFEST_JSON"
-    const val META_ID = "com.streamvault.plugin.ID"
-    const val META_NAME = "com.streamvault.plugin.NAME"
-    const val META_VERSION_NAME = "com.streamvault.plugin.VERSION_NAME"
-    const val META_VERSION_CODE = "com.streamvault.plugin.VERSION_CODE"
-    const val META_DESCRIPTION = "com.streamvault.plugin.DESCRIPTION"
-    const val META_CAPABILITIES = "com.streamvault.plugin.CAPABILITIES"
-    const val META_CONFIGURATION_MODE = "com.streamvault.plugin.CONFIGURATION_MODE"
-    const val META_CONFIGURATION_ACTIVITY_ACTION = "com.streamvault.plugin.CONFIGURATION_ACTIVITY_ACTION"
-    const val META_PROVIDER_NAME = "com.streamvault.plugin.PROVIDER_NAME"
+    const val ACTION_PLUGIN_SERVICE = "com.vmax.iptv.plugin.API"
+    const val META_MANIFEST_JSON = "com.vmax.iptv.plugin.MANIFEST_JSON"
+    const val META_ID = "com.vmax.iptv.plugin.ID"
+    const val META_NAME = "com.vmax.iptv.plugin.NAME"
+    const val META_VERSION_NAME = "com.vmax.iptv.plugin.VERSION_NAME"
+    const val META_VERSION_CODE = "com.vmax.iptv.plugin.VERSION_CODE"
+    const val META_DESCRIPTION = "com.vmax.iptv.plugin.DESCRIPTION"
+    const val META_CAPABILITIES = "com.vmax.iptv.plugin.CAPABILITIES"
+    const val META_CONFIGURATION_MODE = "com.vmax.iptv.plugin.CONFIGURATION_MODE"
+    const val META_CONFIGURATION_ACTIVITY_ACTION = "com.vmax.iptv.plugin.CONFIGURATION_ACTIVITY_ACTION"
+    const val META_PROVIDER_NAME = "com.vmax.iptv.plugin.PROVIDER_NAME"
 
     const val MSG_GET_MANIFEST = 1
     const val MSG_SET_ENABLED = 2

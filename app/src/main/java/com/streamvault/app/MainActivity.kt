@@ -23,7 +23,7 @@ import com.streamvault.app.navigation.PlayerNavigationRequest
 import com.streamvault.app.tv.LauncherRecommendationsManager
 import com.streamvault.app.tv.WatchNextManager
 import com.streamvault.app.tvinput.TvInputChannelSyncManager
-import com.streamvault.app.ui.theme.StreamVaultTheme
+import com.streamvault.app.ui.theme.VmaxTheme
 import com.streamvault.app.ui.time.LocalAppTimeFormat
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -113,11 +113,9 @@ class MainActivity : ComponentActivity() {
         _pictureInPictureModeFlow.value = isInPictureInPictureMode
         handleExternalIntent(intent)
         if (isTelevisionDevice()) {
-            lifecycleScope.launch {
-                watchNextManager.refreshWatchNext()
-                launcherRecommendationsManager.refreshRecommendations()
-                tvInputChannelSyncManager.refreshTvInputCatalog()
-            }
+            lifecycleScope.launch { watchNextManager.refreshWatchNext() }
+            lifecycleScope.launch { launcherRecommendationsManager.refreshRecommendations() }
+            lifecycleScope.launch { tvInputChannelSyncManager.refreshTvInputCatalog() }
         }
         setContent {
             val appLanguage by preferencesRepository.appLanguage.collectAsState(initial = "system")
@@ -163,7 +161,7 @@ class MainActivity : ComponentActivity() {
                 LocalLayoutDirection provides layoutDirection,
                 LocalAppTimeFormat provides appTimeFormat
             ) {
-                StreamVaultTheme {
+                VmaxTheme {
                     AppNavigation(mainActivity = this@MainActivity)
                 }
             }

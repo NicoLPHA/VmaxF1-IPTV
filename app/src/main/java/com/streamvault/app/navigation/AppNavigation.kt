@@ -80,6 +80,7 @@ object Routes {
     const val WELCOME = "welcome"
     const val PARENTAL_CONTROL_GROUPS = "parental_control_groups/{providerId}"
     const val MULTI_VIEW = "multi_view"
+    const val F1 = "f1"
 
 
     fun providerSetup(providerId: Long? = null, importUri: String? = null): String {
@@ -544,6 +545,29 @@ fun AppNavigation(mainActivity: MainActivity) {
                     )
                 },
                 onNavigate = { route -> tabNavigate(route) }
+            )
+        }
+
+        composable(Routes.F1) {
+            com.streamvault.app.ui.screens.f1.F1Screen(
+                onNavigate = { route -> tabNavigate(route) },
+                currentRoute = Routes.F1,
+                onPlayChannel = { channel ->
+                    navController.navigateToPlayer(
+                        Routes.livePlayer(
+                            channel = channel,
+                            categoryId = channel.categoryId,
+                            providerId = channel.providerId,
+                            returnRoute = Routes.F1
+                        )
+                    )
+                },
+                onMovieClick = { movie ->
+                    navController.navigateIfResumed(Routes.movieDetail(movie.id, Routes.F1))
+                },
+                onSeriesClick = { series ->
+                    navController.navigateIfResumed(Routes.seriesDetail(series.id, Routes.F1))
+                }
             )
         }
 

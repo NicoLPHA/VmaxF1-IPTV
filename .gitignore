@@ -64,3 +64,5 @@ tmp/gha-artifact-inspect/
 .tmp-inspect/
 translations/
 releases/*.apk
+app/release/
+Vmaxiptv

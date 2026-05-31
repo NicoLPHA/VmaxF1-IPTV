@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">StreamVault</string>
+    <string name="app_name">Vmax IPTV</string>
 
     
     <string name="nav_home">Home</string>
@@ -10,6 +10,7 @@
     <string name="nav_epg">Guide</string>
     <string name="nav_settings">Settings</string>
     <string name="nav_plugins">Plugins</string>
+    <string name="nav_f1">F1</string>
 
     
     <string name="welcome_enter_app">Enter App</string>
@@ -124,7 +125,7 @@
     <string name="dashboard_provider_no_expiry">No expiry reported</string>
     <string name="dashboard_warning_title">Provider Needs Attention</string>
     <string name="dashboard_warning_review">Open Provider Details</string>
-    <string name="dashboard_update_title">StreamVault %1$s is available</string>
+    <string name="dashboard_update_title">Vmax IPTV %1$s is available</string>
     <string name="dashboard_update_available">A newer app release is cached and ready to review from Settings.</string>
     <string name="dashboard_update_install_ready">The latest update has already been downloaded. Open Settings to install it.</string>
     <string name="dashboard_update_open_settings">Open Updates</string>
@@ -531,7 +532,7 @@
     <string name="settings_about_subtitle">Version, build, and support details for this installation.</string>
     <string name="settings_app_version">App Version</string>
     <string name="settings_build">Build</string>
-    <string name="settings_build_desc">StreamVault for Android TV</string>
+    <string name="settings_build_desc">Vmax IPTV for Android TV</string>
     <string name="settings_build_verification">Build Verification</string>
     <string name="settings_build_verification_official">Official build</string>
     <string name="settings_build_verification_unofficial">Unofficial build</string>
@@ -545,7 +546,7 @@
     <string name="settings_donate">Support on Ko-fi</string>
     <string name="settings_donate_url">https://ko-fi.com/davidona</string>
     <string name="settings_updates_title">Updates</string>
-    <string name="settings_updates_subtitle">Check GitHub Releases for newer StreamVault versions without leaving the app.</string>
+    <string name="settings_updates_subtitle">Check GitHub Releases for newer Vmax IPTV versions without leaving the app.</string>
     <string name="settings_update_auto_check">Automatically check for updates</string>
     <string name="settings_update_auto_download">Automatically download updates</string>
     <string name="settings_update_latest_release">Latest release</string>
@@ -570,8 +571,8 @@
     <string name="settings_update_status_check_failed">Last check failed</string>
     <string name="settings_update_status_downloading">Downloading update</string>
     <string name="settings_update_status_ready_to_install">Ready to install</string>
-    <string name="settings_update_available_message">StreamVault %1$s is available.</string>
-    <string name="settings_update_current_message">You already have the latest StreamVault release.</string>
+    <string name="settings_update_available_message">Vmax IPTV %1$s is available.</string>
+    <string name="settings_update_current_message">You already have the latest Vmax IPTV release.</string>
     <string name="settings_syncing">Syncing data, please wait...</string>
     <string name="settings_syncing_title">Syncing data...</string>
     <string name="settings_syncing_subtitle">Please wait while your playlist is imported.</string>
@@ -656,7 +657,7 @@
     <string name="settings_crash_report_deleted">Crash report deleted.</string>
     <string name="settings_crash_report_delete_failed">Could not delete crash report.</string>
     <string name="settings_restore_data">Import Data</string>
-    <string name="settings_restore_subtitle">Choose a backup file, or open a backup with StreamVault from a file manager.</string>
+    <string name="settings_restore_subtitle">Choose a backup file, or open a backup with Vmax IPTV from a file manager.</string>
     <string name="settings_backup_preview_title">Review Backup Import</string>
     <string name="settings_backup_preview_subtitle">Backup version %1$d detected. Choose what to import before making changes.</string>
     <string name="settings_backup_conflict_strategy">Conflict strategy</string>
@@ -908,7 +909,7 @@
     <string name="a11y_channel_with_number">Channel %1$d, %2$s</string>
 
     
-    <string name="setup_title_streamvault">StreamVault</string>
+    <string name="setup_title_Vmax_IPTV">Vmax IPTV</string>
     <string name="setup_provider_title">Add a provider</string>
     <string name="setup_edit_provider">Edit Provider</string>
     <string name="setup_update_desc">Update your IPTV provider details</string>
@@ -1174,8 +1175,8 @@
     <string name="epg_recording_conflict_cancel">Cancel</string>
     <string name="epg_program_reminder_cancel">Cancel Reminder</string>
     <string name="epg_program_reminder_loading">Updating Reminder...</string>
-    <string name="notification_permission_reminder_required">Enable notifications for StreamVault to receive program reminders.</string>
-    <string name="notification_permission_recording_alert_required">Enable notifications for StreamVault to receive recording failure alerts.</string>
+    <string name="notification_permission_reminder_required">Enable notifications for Vmax IPTV to receive program reminders.</string>
+    <string name="notification_permission_recording_alert_required">Enable notifications for Vmax IPTV to receive recording failure alerts.</string>
     <string name="epg_hero_no_schedule_hint">This channel has no guide entries in the current window.</string>
     <string name="epg_hero_no_program_description">Program details are limited for this entry.</string>
     <string name="epg_filter_label">Guide Filter</string>
@@ -1516,25 +1517,25 @@
     <string name="settings_history_cleared">Watch history and recents cleared</string>
     <string name="settings_pin_changed">PIN saved successfully</string>
     <string name="home_reorder_channels">Reorder Channels</string>
-    <string name="tv_input_setup_scanning_title">Scanning StreamVault channels</string>
+    <string name="tv_input_setup_scanning_title">Scanning Vmax IPTV channels</string>
     <string name="tv_input_setup_success_title">Live TV is ready</string>
     <string name="tv_input_setup_no_provider_title">No IPTV provider configured</string>
     <string name="tv_input_setup_error_title">Auto scan failed</string>
     <string name="tv_input_setup_idle_title">Preparing Live TV integration</string>
-    <string name="tv_input_setup_scanning_body">StreamVault is syncing your active provider into Android TV Live TV.</string>
+    <string name="tv_input_setup_scanning_body">Vmax IPTV is syncing your active provider into Android TV Live TV.</string>
     <string name="tv_input_setup_success_body">Your channels were synced successfully.</string>
-    <string name="tv_input_setup_no_provider_body">Add at least one IPTV provider in StreamVault, then return here to scan channels into Android TV Live TV.</string>
+    <string name="tv_input_setup_no_provider_body">Add at least one IPTV provider in Vmax IPTV, then return here to scan channels into Android TV Live TV.</string>
     <string name="tv_input_setup_error_body">The TV input sync did not complete.</string>
     <string name="tv_input_setup_idle_body">Please wait.</string>
     <string name="tv_input_setup_source_format">Source: %1$s</string>
-    <string name="tv_input_setup_open_setup">Open StreamVault Setup</string>
+    <string name="tv_input_setup_open_setup">Open Vmax IPTV Setup</string>
     <string name="tv_input_setup_try_scan_again">Try Auto Scan Again</string>
     <string name="tv_input_setup_retry_scan">Retry Auto Scan</string>
-    <string name="tv_input_setup_success_hint">Android TV Live TV can now open your StreamVault channels.</string>
+    <string name="tv_input_setup_success_hint">Android TV Live TV can now open your Vmax IPTV channels.</string>
 
     <!-- M2: Google Drive backup sync -->
     <string name="settings_drive_section_title">Google Drive backup</string>
-    <string name="settings_drive_section_subtitle">Push and pull your StreamVault configuration to a private Drive folder.</string>
+    <string name="settings_drive_section_subtitle">Push and pull your Vmax IPTV configuration to a private Drive folder.</string>
     <string name="settings_drive_signin">Sign in to Google Drive</string>
     <string name="settings_drive_signin_description">Connect a Google account to enable cloud backup.</string>
     <string name="settings_drive_signout">Sign out</string>
@@ -1546,4 +1547,19 @@
     <string name="settings_drive_last_pull">Pulled: %1$s</string>
     <string name="settings_drive_never_synced">Never synced yet</string>
     <string name="setup_import_from_drive">Import from Drive</string>
+
+    <!-- F1 Screen -->
+    <string name="f1_screen_title">Formula 1</string>
+    <string name="f1_channels_section">F1 Channels</string>
+    <string name="f1_no_channels">No F1 channels found</string>
+    <string name="f1_no_channels_subtitle">Make sure your provider has F1 content and is synced.</string>
+    <string name="f1_no_calendar">Could not load the race calendar</string>
+    <string name="f1_tab_main">Main Feed</string>
+    <string name="f1_tab_onboard">Onboard</string>
+    <string name="f1_tab_pit_lane">Pit Lane</string>
+    <string name="f1_live_section">Live</string>
+    <string name="f1_movies_section">Movies</string>
+    <string name="f1_series_section">Series</string>
+    <string name="f1_no_movies">No F1 movies found</string>
+    <string name="f1_no_series">No F1 series found</string>
 </resources>
