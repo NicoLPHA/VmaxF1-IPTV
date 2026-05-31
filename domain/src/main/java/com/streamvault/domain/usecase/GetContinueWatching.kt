@@ -2,6 +2,7 @@ package com.streamvault.domain.usecase
 
 import com.streamvault.domain.model.ContentType
 import com.streamvault.domain.model.PlaybackHistory
+import com.streamvault.domain.model.PlaybackWatchedStatus
 import com.streamvault.domain.repository.PlaybackHistoryRepository
 import com.streamvault.domain.util.isPlaybackComplete
 import com.streamvault.domain.util.shouldRethrowDomainFlowFailure
@@ -111,7 +112,10 @@ class GetContinueWatching @Inject constructor(
 
     private fun PlaybackHistory.isCompleted(): Boolean = when (contentType) {
         ContentType.MOVIE,
-        ContentType.SERIES_EPISODE -> isPlaybackComplete(resumePositionMs, totalDurationMs)
+        ContentType.SERIES_EPISODE ->
+            watchedStatus == PlaybackWatchedStatus.COMPLETED_AUTO ||
+            watchedStatus == PlaybackWatchedStatus.COMPLETED_MANUAL ||
+            isPlaybackComplete(resumePositionMs, totalDurationMs)
         ContentType.SERIES,
         ContentType.LIVE -> false
     }

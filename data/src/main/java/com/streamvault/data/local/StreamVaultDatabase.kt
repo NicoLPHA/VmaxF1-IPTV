@@ -49,7 +49,7 @@ import com.streamvault.data.local.entity.*
         XtreamIndexJobEntity::class,
         XtreamLiveOnboardingStateEntity::class
     ],
-    version = 57,
+    version = 58,
     exportSchema = true   // ← was false; schema JSON now tracked in version control
 )
 @TypeConverters(RoomEnumConverters::class)
@@ -2646,6 +2646,50 @@ abstract class StreamVaultDatabase : RoomDatabase() {
                     "ALTER TABLE providers ADD COLUMN stalker_playback_backend_hint TEXT NOT NULL DEFAULT 'AUTO'"
                 )
                 validateForeignKeys(database, "providers")
+            }
+        }
+
+        // Migration 3→4 seeded playback_history from movies/episodes but omitted total_duration_ms.
+        // Entries with total_duration_ms = 0 can never satisfy isPlaybackComplete(), so fully-watched
+        // content kept appearing in "Continue Watching". This migration backfills the duration and
+        // marks completed entries so they are correctly filtered out.
+        val MIGRATION_57_58 = object : Migration(57, 58) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    UPDATE playback_history
+                    SET total_duration_ms = COALESCE(
+                        (SELECT CASE WHEN m.duration_seconds > 0 THEN m.duration_seconds * 1000 ELSE 0 END
+                         FROM movies m
+                         WHERE m.id = playback_history.content_id
+                         AND m.provider_id = playback_history.provider_id
+                         AND m.duration_seconds > 0),
+                        0
+                    )
+                    WHERE content_type = 'MOVIE'
+                    AND total_duration_ms = 0
+                    AND resume_position_ms > 0
+                """.trimIndent())
+                database.execSQL("""
+                    UPDATE playback_history
+                    SET total_duration_ms = COALESCE(
+                        (SELECT CASE WHEN e.duration_seconds > 0 THEN e.duration_seconds * 1000 ELSE 0 END
+                         FROM episodes e
+                         WHERE e.id = playback_history.content_id
+                         AND e.provider_id = playback_history.provider_id
+                         AND e.duration_seconds > 0),
+                        0
+                    )
+                    WHERE content_type = 'SERIES_EPISODE'
+                    AND total_duration_ms = 0
+                    AND resume_position_ms > 0
+                """.trimIndent())
+                database.execSQL("""
+                    UPDATE playback_history
+                    SET watched_status = 'COMPLETED_AUTO'
+                    WHERE total_duration_ms > 0
+                    AND resume_position_ms >= CAST(total_duration_ms * 0.95 AS INTEGER)
+                    AND watched_status = 'IN_PROGRESS'
+                """.trimIndent())
             }
         }
 
