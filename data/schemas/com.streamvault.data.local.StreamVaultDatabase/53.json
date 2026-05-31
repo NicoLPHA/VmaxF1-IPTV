@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 53,
-    "identityHash": "d85e5733bdcd2746d8d5c217cc049473",
+    "identityHash": "feb751bea12eb7d3f6c0960db057a565",
     "entities": [
       {
         "tableName": "providers",
@@ -747,23 +747,13 @@
       },
       {
         "tableName": "movies_fts",
-        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`name` TEXT NOT NULL, `cast` TEXT, `genre` TEXT, content=`movies`)",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`name` TEXT NOT NULL, content=`movies`)",
         "fields": [
           {
             "fieldPath": "name",
             "columnName": "name",
             "affinity": "TEXT",
             "notNull": true
-          },
-          {
-            "fieldPath": "cast",
-            "columnName": "cast",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "genre",
-            "columnName": "genre",
-            "affinity": "TEXT"
           }
         ],
         "primaryKey": {
@@ -784,8 +774,8 @@
         "contentSyncTriggers": [
           "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_movies_fts_BEFORE_UPDATE BEFORE UPDATE ON `movies` BEGIN DELETE FROM `movies_fts` WHERE `docid`=OLD.`rowid`; END",
           "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_movies_fts_BEFORE_DELETE BEFORE DELETE ON `movies` BEGIN DELETE FROM `movies_fts` WHERE `docid`=OLD.`rowid`; END",
-          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_movies_fts_AFTER_UPDATE AFTER UPDATE ON `movies` BEGIN INSERT INTO `movies_fts`(`docid`, `name`, `cast`, `genre`) VALUES (NEW.`rowid`, NEW.`name`, NEW.`cast`, NEW.`genre`); END",
-          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_movies_fts_AFTER_INSERT AFTER INSERT ON `movies` BEGIN INSERT INTO `movies_fts`(`docid`, `name`, `cast`, `genre`) VALUES (NEW.`rowid`, NEW.`name`, NEW.`cast`, NEW.`genre`); END"
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_movies_fts_AFTER_UPDATE AFTER UPDATE ON `movies` BEGIN INSERT INTO `movies_fts`(`docid`, `name`) VALUES (NEW.`rowid`, NEW.`name`); END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_movies_fts_AFTER_INSERT AFTER INSERT ON `movies` BEGIN INSERT INTO `movies_fts`(`docid`, `name`) VALUES (NEW.`rowid`, NEW.`name`); END"
         ]
       },
       {
@@ -1030,23 +1020,13 @@
       },
       {
         "tableName": "series_fts",
-        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`name` TEXT NOT NULL, `cast` TEXT, `genre` TEXT, content=`series`)",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`name` TEXT NOT NULL, content=`series`)",
         "fields": [
           {
             "fieldPath": "name",
             "columnName": "name",
             "affinity": "TEXT",
             "notNull": true
-          },
-          {
-            "fieldPath": "cast",
-            "columnName": "cast",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "genre",
-            "columnName": "genre",
-            "affinity": "TEXT"
           }
         ],
         "primaryKey": {
@@ -1067,8 +1047,8 @@
         "contentSyncTriggers": [
           "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_series_fts_BEFORE_UPDATE BEFORE UPDATE ON `series` BEGIN DELETE FROM `series_fts` WHERE `docid`=OLD.`rowid`; END",
           "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_series_fts_BEFORE_DELETE BEFORE DELETE ON `series` BEGIN DELETE FROM `series_fts` WHERE `docid`=OLD.`rowid`; END",
-          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_series_fts_AFTER_UPDATE AFTER UPDATE ON `series` BEGIN INSERT INTO `series_fts`(`docid`, `name`, `cast`, `genre`) VALUES (NEW.`rowid`, NEW.`name`, NEW.`cast`, NEW.`genre`); END",
-          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_series_fts_AFTER_INSERT AFTER INSERT ON `series` BEGIN INSERT INTO `series_fts`(`docid`, `name`, `cast`, `genre`) VALUES (NEW.`rowid`, NEW.`name`, NEW.`cast`, NEW.`genre`); END"
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_series_fts_AFTER_UPDATE AFTER UPDATE ON `series` BEGIN INSERT INTO `series_fts`(`docid`, `name`) VALUES (NEW.`rowid`, NEW.`name`); END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_series_fts_AFTER_INSERT AFTER INSERT ON `series` BEGIN INSERT INTO `series_fts`(`docid`, `name`) VALUES (NEW.`rowid`, NEW.`name`); END"
         ]
       },
       {
@@ -2851,7 +2831,7 @@
       },
       {
         "tableName": "movie_category_hydration",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`provider_id` INTEGER NOT NULL, `category_id` INTEGER NOT NULL, `last_hydrated_at` INTEGER NOT NULL, `item_count` INTEGER NOT NULL, `last_status` TEXT NOT NULL, `last_error` TEXT, `last_loaded_page` INTEGER NOT NULL, `total_pages` INTEGER NOT NULL, `is_complete` INTEGER NOT NULL, `page_size` INTEGER NOT NULL, PRIMARY KEY(`provider_id`, `category_id`), FOREIGN KEY(`provider_id`) REFERENCES `providers`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`provider_id` INTEGER NOT NULL, `category_id` INTEGER NOT NULL, `last_hydrated_at` INTEGER NOT NULL, `item_count` INTEGER NOT NULL, `last_status` TEXT NOT NULL, `last_error` TEXT, `last_loaded_page` INTEGER NOT NULL, `last_attempted_page` INTEGER NOT NULL, `last_successful_page` INTEGER NOT NULL, `total_pages` INTEGER NOT NULL, `is_complete` INTEGER NOT NULL, `page_size` INTEGER NOT NULL, `retry_after_ms` INTEGER NOT NULL, `failure_count` INTEGER NOT NULL, `retry_budget_remaining` INTEGER NOT NULL, `last_page_fingerprint` TEXT, PRIMARY KEY(`provider_id`, `category_id`), FOREIGN KEY(`provider_id`) REFERENCES `providers`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "providerId",
@@ -2895,6 +2875,18 @@
             "notNull": true
           },
           {
+            "fieldPath": "lastAttemptedPage",
+            "columnName": "last_attempted_page",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSuccessfulPage",
+            "columnName": "last_successful_page",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
             "fieldPath": "totalPages",
             "columnName": "total_pages",
             "affinity": "INTEGER",
@@ -2911,6 +2903,29 @@
             "columnName": "page_size",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "retryAfterMs",
+            "columnName": "retry_after_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "failureCount",
+            "columnName": "failure_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "retryBudgetRemaining",
+            "columnName": "retry_budget_remaining",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastPageFingerprint",
+            "columnName": "last_page_fingerprint",
+            "affinity": "TEXT"
           }
         ],
         "primaryKey": {
@@ -2947,7 +2962,7 @@
       },
       {
         "tableName": "series_category_hydration",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`provider_id` INTEGER NOT NULL, `category_id` INTEGER NOT NULL, `last_hydrated_at` INTEGER NOT NULL, `item_count` INTEGER NOT NULL, `last_status` TEXT NOT NULL, `last_error` TEXT, `last_loaded_page` INTEGER NOT NULL, `total_pages` INTEGER NOT NULL, `is_complete` INTEGER NOT NULL, `page_size` INTEGER NOT NULL, PRIMARY KEY(`provider_id`, `category_id`), FOREIGN KEY(`provider_id`) REFERENCES `providers`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`provider_id` INTEGER NOT NULL, `category_id` INTEGER NOT NULL, `last_hydrated_at` INTEGER NOT NULL, `item_count` INTEGER NOT NULL, `last_status` TEXT NOT NULL, `last_error` TEXT, `last_loaded_page` INTEGER NOT NULL, `last_attempted_page` INTEGER NOT NULL, `last_successful_page` INTEGER NOT NULL, `total_pages` INTEGER NOT NULL, `is_complete` INTEGER NOT NULL, `page_size` INTEGER NOT NULL, `retry_after_ms` INTEGER NOT NULL, `failure_count` INTEGER NOT NULL, `retry_budget_remaining` INTEGER NOT NULL, `last_page_fingerprint` TEXT, PRIMARY KEY(`provider_id`, `category_id`), FOREIGN KEY(`provider_id`) REFERENCES `providers`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "providerId",
@@ -2991,6 +3006,18 @@
             "notNull": true
           },
           {
+            "fieldPath": "lastAttemptedPage",
+            "columnName": "last_attempted_page",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSuccessfulPage",
+            "columnName": "last_successful_page",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
             "fieldPath": "totalPages",
             "columnName": "total_pages",
             "affinity": "INTEGER",
@@ -3007,6 +3034,29 @@
             "columnName": "page_size",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "retryAfterMs",
+            "columnName": "retry_after_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "failureCount",
+            "columnName": "failure_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "retryBudgetRemaining",
+            "columnName": "retry_budget_remaining",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastPageFingerprint",
+            "columnName": "last_page_fingerprint",
+            "affinity": "TEXT"
           }
         ],
         "primaryKey": {
@@ -5001,7 +5051,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd85e5733bdcd2746d8d5c217cc049473')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'feb751bea12eb7d3f6c0960db057a565')"
     ]
   }
 }
