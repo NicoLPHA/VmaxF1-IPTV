@@ -47,9 +47,10 @@ import com.streamvault.data.local.entity.*
         PlaybackCompatibilityRecordEntity::class,
         XtreamContentIndexEntity::class,
         XtreamIndexJobEntity::class,
-        XtreamLiveOnboardingStateEntity::class
+        XtreamLiveOnboardingStateEntity::class,
+        DownloadEntity::class
     ],
-    version = 58,
+    version = 61,
     exportSchema = true   // ← was false; schema JSON now tracked in version control
 )
 @TypeConverters(RoomEnumConverters::class)
@@ -87,6 +88,7 @@ abstract class StreamVaultDatabase : RoomDatabase() {
     abstract fun xtreamContentIndexDao(): XtreamContentIndexDao
     abstract fun xtreamIndexJobDao(): XtreamIndexJobDao
     abstract fun xtreamLiveOnboardingDao(): XtreamLiveOnboardingDao
+    abstract fun downloadDao(): DownloadDao
 
     companion object {
         /**
@@ -2649,11 +2651,91 @@ abstract class StreamVaultDatabase : RoomDatabase() {
             }
         }
 
-        // Migration 3→4 seeded playback_history from movies/episodes but omitted total_duration_ms.
-        // Entries with total_duration_ms = 0 can never satisfy isPlaybackComplete(), so fully-watched
-        // content kept appearing in "Continue Watching". This migration backfills the duration and
-        // marks completed entries so they are correctly filtered out.
         val MIGRATION_57_58 = object : Migration(57, 58) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS downloads (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        provider_id INTEGER NOT NULL,
+                        content_type TEXT NOT NULL,
+                        content_id INTEGER NOT NULL,
+                        content_name TEXT NOT NULL,
+                        stream_url TEXT NOT NULL,
+                        source_stream_url TEXT,
+                        source_stream_id INTEGER,
+                        container_extension TEXT,
+                        poster_url TEXT,
+                        output_uri TEXT,
+                        output_display_path TEXT,
+                        status TEXT NOT NULL DEFAULT 'PENDING',
+                        bytes_written INTEGER NOT NULL DEFAULT 0,
+                        total_bytes INTEGER,
+                        created_at INTEGER NOT NULL,
+                        completed_at INTEGER,
+                        failure_reason TEXT,
+                        series_id INTEGER,
+                        season_number INTEGER,
+                        episode_number INTEGER
+                    )
+                    """.trimIndent()
+                )
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_downloads_status ON downloads(status)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_downloads_provider_id ON downloads(provider_id)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_downloads_content_type_content_id ON downloads(content_type, content_id)")
+            }
+        }
+
+        // Fork users who were on v58 (via backfill migration) missed the downloads table.
+        // This migration creates it IF NOT EXISTS before adding resume columns.
+        val MIGRATION_58_59 = object : Migration(58, 59) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS downloads (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        provider_id INTEGER NOT NULL,
+                        content_type TEXT NOT NULL,
+                        content_id INTEGER NOT NULL,
+                        content_name TEXT NOT NULL,
+                        stream_url TEXT NOT NULL,
+                        source_stream_url TEXT,
+                        source_stream_id INTEGER,
+                        container_extension TEXT,
+                        poster_url TEXT,
+                        output_uri TEXT,
+                        output_display_path TEXT,
+                        status TEXT NOT NULL DEFAULT 'PENDING',
+                        bytes_written INTEGER NOT NULL DEFAULT 0,
+                        total_bytes INTEGER,
+                        created_at INTEGER NOT NULL,
+                        completed_at INTEGER,
+                        failure_reason TEXT,
+                        series_id INTEGER,
+                        season_number INTEGER,
+                        episode_number INTEGER
+                    )
+                    """.trimIndent()
+                )
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_downloads_status ON downloads(status)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_downloads_provider_id ON downloads(provider_id)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_downloads_content_type_content_id ON downloads(content_type, content_id)")
+                database.execSQL("ALTER TABLE downloads ADD COLUMN supports_resume INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE downloads ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        val MIGRATION_59_60 = object : Migration(59, 60) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                addColumnIfMissing(database, "downloads", "source_stream_url", "TEXT")
+                addColumnIfMissing(database, "downloads", "source_stream_id", "INTEGER")
+                addColumnIfMissing(database, "downloads", "container_extension", "TEXT")
+            }
+        }
+
+        // Backfills total_duration_ms in playback_history so fully-watched content
+        // no longer appears in "Continue Watching".
+        val MIGRATION_60_61 = object : Migration(60, 61) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL("""
                     UPDATE playback_history
@@ -2700,6 +2782,34 @@ abstract class StreamVaultDatabase : RoomDatabase() {
             database.execSQL("ALTER TABLE $tableName ADD COLUMN failure_count INTEGER NOT NULL DEFAULT 0")
             database.execSQL("ALTER TABLE $tableName ADD COLUMN retry_budget_remaining INTEGER NOT NULL DEFAULT 3")
             database.execSQL("ALTER TABLE $tableName ADD COLUMN last_page_fingerprint TEXT")
+        }
+
+        private fun addColumnIfMissing(
+            database: SupportSQLiteDatabase,
+            tableName: String,
+            columnName: String,
+            columnDefinition: String
+        ) {
+            if (tableHasColumn(database, tableName, columnName)) {
+                return
+            }
+            database.execSQL("ALTER TABLE $tableName ADD COLUMN $columnName $columnDefinition")
+        }
+
+        private fun tableHasColumn(
+            database: SupportSQLiteDatabase,
+            tableName: String,
+            columnName: String
+        ): Boolean {
+            database.query("PRAGMA table_info($tableName)").use { cursor ->
+                val nameIndex = cursor.getColumnIndex("name")
+                while (cursor.moveToNext()) {
+                    if (nameIndex >= 0 && cursor.getString(nameIndex) == columnName) {
+                        return true
+                    }
+                }
+            }
+            return false
         }
     }
 }
