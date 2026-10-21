@@ -67,7 +67,8 @@ tmp/gha-artifact-inspect/
 .tmp-inspect/
 /app/src/main/java/com/streamvault/app.zip
 translations/
-releases/*.apk
+app/release/
+Vmaxiptv
 
 # Raw validation captures
 /validation/phase5_system/task10-logcat.txt
