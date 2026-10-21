@@ -4,6 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.dropUnlessResumed
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import com.streamvault.app.ui.screens.f1.F1Screen
 import com.streamvault.app.navigation.graph.registerLiveGraph
 import com.streamvault.app.ui.components.shell.AppNavigationChrome
 import com.streamvault.app.ui.components.shell.AppScreenScaffold
@@ -85,6 +87,17 @@ internal fun AppNavHost(
             }
         )
         registerLiveGraph(actions, onTopLevelDestinationRequested)
+        composable(AppRoutePatterns.F1) {
+            F1Screen(
+                onNavigate = { route -> AppRouteCodec.decode(route)?.let(onTopLevelDestinationRequested) },
+                currentRoute = AppRoutePatterns.F1,
+                onPlayChannel = { channel ->
+                    actions.openPlayer(channel.toLivePlayerRequest(returnDestination = AppDestination.F1))
+                },
+                onMovieClick = { movie -> catalogDetailActions.openMovieDetail(movie, AppDestination.F1) },
+                onSeriesClick = { series -> catalogDetailActions.openSeriesDetail(series, AppDestination.F1) }
+            )
+        }
         registerStremioGraph(
             navController = navController,
             actions = actions,

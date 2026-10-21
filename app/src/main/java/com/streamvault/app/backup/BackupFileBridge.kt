@@ -46,7 +46,7 @@ object BackupFileBridge {
                     MediaStore.MediaColumns.DISPLAY_NAME,
                     MediaStore.MediaColumns.DATE_MODIFIED,
                 )
-                val relativePath = Environment.DIRECTORY_DOWNLOADS + "/StreamVault/"
+                val relativePath = Environment.DIRECTORY_DOWNLOADS + "/Vmax IPTV/"
                 context.contentResolver.query(
                     MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                     projection,
@@ -133,7 +133,7 @@ object BackupFileBridge {
                 put(MediaStore.MediaColumns.MIME_TYPE, MIME_TYPE_JSON)
                 put(
                     MediaStore.MediaColumns.RELATIVE_PATH,
-                    Environment.DIRECTORY_DOWNLOADS + "/StreamVault/"
+                    Environment.DIRECTORY_DOWNLOADS + "/Vmax IPTV/"
                 )
                 put(MediaStore.MediaColumns.IS_PENDING, 1)
             }
@@ -322,7 +322,7 @@ object BackupFileBridge {
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        return Intent.createChooser(sendIntent, "Share StreamVault backup")
+        return Intent.createChooser(sendIntent, "Share Vmax IPTV backup")
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
 

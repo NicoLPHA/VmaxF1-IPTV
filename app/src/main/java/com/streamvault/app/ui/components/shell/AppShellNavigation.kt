@@ -139,7 +139,14 @@ internal fun rememberAppDestinationItems(
     val destinationItems = remember(configuredDestinations, catalogLayout) {
         buildDestinationItems(configuredDestinations, catalogLayout)
     }
-    return destinationItems.map { item ->
+    val items = remember(destinationItems) {
+        val f1Item = AppDestinationItem(Routes.F1, R.string.nav_f1, F1FlagIcon)
+        val guideIndex = destinationItems.indexOfFirst { it.route == Routes.EPG }
+        destinationItems.toMutableList().apply {
+            add(if (guideIndex >= 0) guideIndex + 1 else size, f1Item)
+        }
+    }
+    return items.map { item ->
         UiDestination(
             id = item.route,
             label = stringResource(item.labelRes),

@@ -486,7 +486,7 @@ private fun DatabaseStartupScreen(
                 }
                 is DatabaseStartupState.Failed -> {
                     Text(
-                        text = "StreamVault couldn't open your library",
+                        text = "Vmax IPTV couldn't open your library",
                         style = MaterialTheme.typography.headlineSmall,
                         textAlign = TextAlign.Center
                     )

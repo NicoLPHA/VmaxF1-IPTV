@@ -50,4 +50,5 @@ sealed interface AppDestination : Serializable {
     }
     data object Player : AppDestination
     data object MultiView : AppDestination
+    data object F1 : AppDestination
 }

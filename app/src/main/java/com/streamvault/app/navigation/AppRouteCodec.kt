@@ -35,6 +35,7 @@ internal object AppRoutePatterns {
     const val SERIES_DETAIL = CatalogRoutePatterns.SERIES_DETAIL
     const val PARENTAL_CONTROL_GROUPS = "parental_control_groups/{providerId}"
     const val MULTI_VIEW = PlaybackRoutePatterns.MULTI_VIEW
+    const val F1 = "f1"
 }
 
 internal object AppRouteCodec {
@@ -87,6 +88,7 @@ internal object AppRouteCodec {
             "${AppRoutePatterns.PARENTAL_CONTROL_GROUPS.substringBefore("/{")}/${destination.providerId}"
         AppDestination.Player -> AppRoutePatterns.PLAYER
         AppDestination.MultiView -> AppRoutePatterns.MULTI_VIEW
+        AppDestination.F1 -> AppRoutePatterns.F1
     }
 
     fun decode(route: String): AppDestination? {
@@ -120,6 +122,7 @@ internal object AppRouteCodec {
             path == AppRoutePatterns.ADDONS -> AppDestination.Addons
             path == AppRoutePatterns.PLAYER -> AppDestination.Player
             path == AppRoutePatterns.MULTI_VIEW -> AppDestination.MultiView
+            path == AppRoutePatterns.F1 -> AppDestination.F1
             path == AppRoutePatterns.SEARCH -> AppDestination.Search(
                 query["query"]?.takeIf(String::isNotBlank)
             )
@@ -214,6 +217,7 @@ internal object Routes {
     const val WELCOME = AppRoutePatterns.WELCOME
     const val PARENTAL_CONTROL_GROUPS = AppRoutePatterns.PARENTAL_CONTROL_GROUPS
     const val MULTI_VIEW = AppRoutePatterns.MULTI_VIEW
+    const val F1 = AppRoutePatterns.F1
 
     fun providerSetup(providerId: Long? = null, importUri: String? = null): String =
         AppRouteCodec.encode(AppDestination.ProviderSetup(providerId, importUri))
