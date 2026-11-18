@@ -34,6 +34,11 @@ class ProviderSyncWorkScheduler @Inject constructor(
             initialDelaySeconds = if (force) 0L else 30L)
     }
 
+    fun scheduleManualEpg(providerId: Long) {
+        BackgroundEpgSyncWorker.enqueue(applicationContext, providerId, force = true,
+            initialDelaySeconds = 0L, userInitiated = true)
+    }
+
     fun scheduleProviderResume(providerId: Long, configurationGeneration: Long? = null) {
         if (configurationGeneration != null) {
             ProviderSyncWorker.enqueueProviderConfigRevision(
@@ -44,6 +49,10 @@ class ProviderSyncWorkScheduler @Inject constructor(
         } else {
             ProviderSyncWorker.enqueueProvider(applicationContext, providerId)
         }
+    }
+
+    fun scheduleStalkerBootstrapResume(providerId: Long) {
+        ProviderSyncWorker.enqueueStalkerBootstrapResume(applicationContext, providerId)
     }
 
     fun scheduleXtreamIndex(
@@ -89,9 +98,6 @@ class ProviderSyncWorkScheduler @Inject constructor(
         val manager = androidx.work.WorkManager.getInstance(applicationContext)
         val policy = AutomaticSyncExecution.policy.get() ?: com.streamvault.domain.sync.AutomaticSyncSettings()
         val wasAutomatic = origins.getBoolean("stalker_$providerId", false)
-        if (!origins.getBoolean("stalker_split_queue_$providerId", false) && wasAutomatic) {
-            manager.cancelUniqueWork(providerWorkUniqueName(providerId))
-        }
         if (!automatic) manager.cancelUniqueWork(providerAutomaticIndexWorkUniqueName(providerId))
         val replaceAutomatic = automatic && wasAutomatic && origins.getString("stalker_policy_$providerId", null) != policy.toString()
         origins.edit {

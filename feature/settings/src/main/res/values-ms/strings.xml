@@ -352,6 +352,13 @@
     <string name="settings_status_expired">Tamat tempoh</string>
     <string name="settings_status_disabled">Dilumpuhkan</string>
     <string name="settings_status_unknown">Tidak diketahui</string>
+    <string name="settings_provider_connection_online">Dalam talian</string>
+    <string name="settings_provider_connection_unavailable">Tidak tersedia</string>
+    <string name="settings_provider_connection_checking">Sedang menyemak…</string>
+    <string name="settings_provider_connection_check_now">Semak sekarang</string>
+    <string name="settings_provider_connection_last_checked">Kali terakhir disemak</string>
+    <string name="settings_provider_connection_authentication_required">Log masuk diperlukan</string>
+    <string name="settings_provider_connection_unknown">Tidak diketahui</string>
     <string name="settings_select_level">Pilih Tahap Perlindungan</string>
     <string name="settings_level_off_desc">MATI - Tiada sekatan</string>
     <string name="settings_level_off_subtitle">Kandungan dewasa muncul di semua tempat.</string>
@@ -936,4 +943,31 @@
     <string name="settings_sports_custom_definition_file_error">Fail JSON ini tidak dapat dimuatkan</string>
     <string name="settings_experimental_badge">Eksperimen</string>
     <string name="settings_sync_index_progress">%1$s · %2$s</string>
+    <string name="settings_refresh_rate_matching">Padankan kadar bingkai kandungan</string>
+    <string name="settings_refresh_rate_matching_description">Memadankan kadar segar semula paparan dengan video untuk gerakan lebih lancar. Memerlukan sokongan paparan; skrin mungkin menjadi gelap seketika semasa pertukaran.</string>
+    <string name="settings_epg_phone_qr_start">Tunjuk kod QR</string>
+    <string name="settings_epg_phone_qr_stop">Hentikan gandingan</string>
+    <string name="settings_epg_phone_qr_warning">Keselamatan: Proses gandingan menghantar kelayakan tanpa penyulitan melalui rangkaian setempat anda. Gunakan rangkaian Wi-Fi peribadi yang dipercayai sahaja.</string>
+    <string name="settings_epg_phone_qr_complete">Ditambah</string>
+    <string name="settings_epg_phone_qr_error">Ralat</string>
+    <string name="settings_backup_export_sections">Pilih bahagian untuk dieksport</string>
+    <string name="settings_m3u_catchup_query_format">Format pertanyaan tontonan semula</string>
+    <string name="settings_m3u_catchup_query_format_subtitle">Digunakan untuk saluran M3U tanpa sumber tontonan semula sendiri. Biarkan kosong untuk mematikan format sandaran ini. Contoh: ?utc={utc}</string>
+    <string name="settings_m3u_catchup_query_format_disabled">Dimatikan</string>
+    <string name="trakt_browser_sign_in">Log masuk melalui pelayar</string>
+    <string name="trakt_phone_sign_in">Luluskan pada peranti lain</string>
+    <string name="trakt_device_instructions">Imbas kod QR atau buka %1$s pada telefon. Masukkan kod di bawah dan luluskan akses. Skrin ini akan bersambung secara automatik. Jika kod tamat tempoh, batalkan dan cuba lagi.</string>
+    <string name="settings_text_size">Saiz teks</string>
+    <string name="settings_text_size_default">Lalai (100%)</string>
+    <string name="settings_text_size_system">Ikut peranti</string>
+    <string name="settings_text_size_custom">Tersuai</string>
+    <string name="settings_privacy_policy">Dasar Privasi</string>
+    <string name="settings_category_reorder_channels">Susun Semula Saluran</string>
+    <string name="settings_category_sort_manual">Manual</string>
+    <string name="settings_category_reorder_categories">Susun semula kategori</string>
+    <string name="settings_default_live_channel_order">Susunan saluran lalai</string>
+    <string name="settings_live_order_save_failed">Tidak dapat menyimpan susunan saluran. Cuba lagi.</string>
+    <string name="settings_live_order_recent">Terbaharu ditonton</string>
+    <string name="settings_live_order_most">Paling banyak ditonton</string>
+    <string name="settings_live_order_usage_help">Tontonan dikira selepas 10 saat main balik. Paling banyak ditonton menjumlahkan masa main balik sepanjang 30 hari lalu.</string>
 </resources>

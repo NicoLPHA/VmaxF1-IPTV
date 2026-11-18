@@ -355,6 +355,13 @@
     <string name="settings_status_expired">Vypršané</string>
     <string name="settings_status_disabled">Zakázané</string>
     <string name="settings_status_unknown">Neznáme</string>
+    <string name="settings_provider_connection_online">Online</string>
+    <string name="settings_provider_connection_unavailable">Nedostupné</string>
+    <string name="settings_provider_connection_checking">Kontroluje sa…</string>
+    <string name="settings_provider_connection_check_now">Skontrolovať teraz</string>
+    <string name="settings_provider_connection_last_checked">Naposledy skontrolované</string>
+    <string name="settings_provider_connection_authentication_required">Vyžaduje sa prihlásenie</string>
+    <string name="settings_provider_connection_unknown">Neznáme</string>
     <string name="settings_select_level">Vyberte úroveň ochrany</string>
     <string name="settings_level_off_desc">VYPNUTÉ - bez obmedzení</string>
     <string name="settings_level_off_subtitle">Obsah pre dospelých sa zobrazuje všade.</string>
@@ -945,4 +952,31 @@
     <string name="settings_sports_custom_definition_file_error">Tento súbor JSON sa nepodarilo načítať</string>
     <string name="settings_experimental_badge">Experimentálne</string>
     <string name="settings_sync_index_progress">%1$s · %2$s</string>
+    <string name="settings_refresh_rate_matching">Prispôsobiť snímkovej frekvencii obsahu</string>
+    <string name="settings_refresh_rate_matching_description">Prispôsobí obnovovaciu frekvenciu displeja videu pre plynulejší pohyb. Vyžaduje podporu displeja; pri prepnutí môže obrazovka nakrátko stmavnúť.</string>
+    <string name="settings_epg_phone_qr_start">Zobraziť QR kód</string>
+    <string name="settings_epg_phone_qr_stop">Zastaviť párovanie</string>
+    <string name="settings_epg_phone_qr_warning">Zabezpečenie: Pri párovaní sa prihlasovacie údaje odosielajú cez miestnu sieť bez šifrovania. Používajte iba dôveryhodnú súkromnú Wi-Fi sieť.</string>
+    <string name="settings_epg_phone_qr_complete">Pridané</string>
+    <string name="settings_epg_phone_qr_error">Chyba</string>
+    <string name="settings_backup_export_sections">Vyberte sekcie na export</string>
+    <string name="settings_m3u_catchup_query_format">Formát požiadavky na prehrávanie archívu</string>
+    <string name="settings_m3u_catchup_query_format_subtitle">Používa sa pre kanály M3U bez vlastného zdroja archívu. Ak chcete vypnúť tento náhradný formát, nechajte pole prázdne. Príklad: ?utc={utc}</string>
+    <string name="settings_m3u_catchup_query_format_disabled">Vypnuté</string>
+    <string name="trakt_browser_sign_in">Prihlásiť sa v prehliadači</string>
+    <string name="trakt_phone_sign_in">Schváliť na inom zariadení</string>
+    <string name="trakt_device_instructions">Naskenujte QR kód alebo otvorte %1$s v telefóne. Zadajte kód nižšie a povoľte prístup. Táto obrazovka sa automaticky pripojí. Ak platnosť kódu vyprší, zrušte pokus a skúste to znova.</string>
+    <string name="settings_text_size">Veľkosť textu</string>
+    <string name="settings_text_size_default">Predvolená (100%)</string>
+    <string name="settings_text_size_system">Podľa zariadenia</string>
+    <string name="settings_text_size_custom">Vlastná</string>
+    <string name="settings_privacy_policy">Zásady ochrany osobných údajov</string>
+    <string name="settings_category_reorder_channels">Usporiadať kanály</string>
+    <string name="settings_category_sort_manual">Ručne</string>
+    <string name="settings_category_reorder_categories">Zmeniť poradie kategórií</string>
+    <string name="settings_default_live_channel_order">Predvolené poradie kanálov</string>
+    <string name="settings_live_order_save_failed">Poradie kanálov sa nepodarilo uložiť. Skúste to znova.</string>
+    <string name="settings_live_order_recent">Nedávno sledované</string>
+    <string name="settings_live_order_most">Najsledovanejšie</string>
+    <string name="settings_live_order_usage_help">Sledovanie sa započíta po 10 sekundách prehrávania. Najsledovanejšie sčítava čas prehrávania za posledných 30 dní.</string>
 </resources>

@@ -1,8 +1,10 @@
 package com.streamvault.app.navigation
 
 import android.app.SearchManager
+import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
+import android.content.pm.PackageManager
 import android.speech.RecognizerIntent
 import com.google.common.truth.Truth.assertThat
 import com.streamvault.app.MainActivity
@@ -20,6 +22,21 @@ class ExternalNavigationRequestParserTest {
     private val parser = ExternalNavigationRequestParser(context)
 
     @Test
+    fun stremioWatchNextIntentPreservesExactRoute() {
+        val route = "addons/item/7/series/series%3A1?videoId=series%3A1%3A2"
+        assertThat(parser.parse(Intent().putExtra("com.streamvault.app.extra.STREMIO_ITEM", route)))
+            .isEqualTo(ExternalNavigationRequest.StremioItem(route))
+    }
+
+    @Test
+    fun malformedStremioWatchNextIntentFallsBackHome() {
+        listOf("player/1", "addons/item/bad/series/id", "addons/item/0/series/id", "addons/item/7/series/").forEach { route ->
+            assertThat(parser.parse(Intent().putExtra("com.streamvault.app.extra.STREMIO_ITEM", route)))
+                .isEqualTo(ExternalNavigationRequest.Destination(AppDestination.Home))
+        }
+    }
+
+    @Test
     fun searchIntentBecomesTypedSearchRequest() {
         val intent = Intent(Intent.ACTION_SEARCH)
             .putExtra(SearchManager.QUERY, " sports ")
@@ -35,6 +52,35 @@ class ExternalNavigationRequestParserTest {
         assertThat(parser.parse(intent)).isEqualTo(
             ExternalNavigationRequest.Destination(AppDestination.Home)
         )
+    }
+
+    @Test
+    fun downloadsLegacyRouteOpensDownloads() {
+        val intent = Intent().putExtra(MainActivity.EXTRA_EXTERNAL_ROUTE, "downloads")
+
+        assertThat(parser.parse(intent)).isEqualTo(
+            ExternalNavigationRequest.Destination(AppDestination.Downloads)
+        )
+    }
+
+    @Test
+    fun advertisedExternalRoutesAreAcceptedByTheLegacyParser() {
+        @Suppress("DEPRECATION")
+        val activityInfo = context.packageManager.getActivityInfo(
+            ComponentName(context, MainActivity::class.java),
+            PackageManager.GET_META_DATA
+        )
+        val routes = checkNotNull(activityInfo.metaData)
+            .getString("com.streamvault.app.EXTERNAL_ROUTES")
+            .orEmpty()
+            .split(',')
+            .map(String::trim)
+            .filter(String::isNotEmpty)
+
+        assertThat(routes).containsExactly("home", "plugins", "downloads").inOrder()
+        routes.forEach { route ->
+            assertThat(AppRouteCodec.decodeLegacyExternalRoute(route)).isNotNull()
+        }
     }
 
     @Test

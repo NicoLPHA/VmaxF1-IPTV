@@ -94,7 +94,8 @@ class PlayerViewModel @Inject constructor(
     internal val playerPlaybackContextCoordinator: PlayerPlaybackContextCoordinator,
     internal val playerRecoveryCoordinator: PlayerRecoveryCoordinator,
     internal val playerRecoveryExecutionCoordinator: PlayerRecoveryExecutionCoordinator,
-    private val stremioAddonRepository: StremioAddonRepository,
+    internal val stremioAddonRepository: StremioAddonRepository,
+    internal val stremioStreamingService: com.streamvault.domain.model.stremio.StremioStreamingService = com.streamvault.domain.model.stremio.DisabledStremioStreamingService,
     internal val playerTraktCoordinator: PlayerTraktCoordinator,
     internal val searchExternalSubtitlesUseCase: SearchExternalSubtitles,
     internal val downloadExternalSubtitleUseCase: DownloadExternalSubtitle,
@@ -242,6 +243,8 @@ class PlayerViewModel @Inject constructor(
 
     internal var channelInfoHideJob: Job? = null
     internal var liveOverlayHideJob: Job? = null
+    /** True while a live overlay side sheet (More, Subs, Audio, Delay) is open: it closes only by hand, never by the idle timer. */
+    internal var liveOverlayAutoHidePaused = false
     internal var diagnosticsHideJob: Job? = null
     internal var numericInputCommitJob: Job? = null
     internal var numericInputFeedbackJob: Job? = null
@@ -345,13 +348,14 @@ class PlayerViewModel @Inject constructor(
             playerPlaybackContextCoordinator.pendingCatchUpUrls = value
         }
     internal var livePlaybackReadyForCurrentSession: Boolean = false
+    internal var terminalPlaybackCleanupStarted: Boolean = false
     internal var channelNumberingMode: ChannelNumberingMode = ChannelNumberingMode.GROUP
         set(value) {
             field = value
             rebuildChannelNumberIndex()
         }
     internal var playerControlsTimeoutMs: Long = 5_000L
-    internal var liveOverlayTimeoutMs: Long = 4_000L
+    internal var liveOverlayTimeoutMs: Long = 6_000L
     internal var playerNoticeTimeoutMs: Long = 6_000L
     internal var diagnosticsTimeoutMs: Long = 15_000L
     private var preferredAudioDecoderMode: DecoderMode = DecoderMode.AUTO
@@ -465,6 +469,8 @@ class PlayerViewModel @Inject constructor(
     internal var zapAutoRevertEnabled: Boolean = true
     internal var autoPlayNextEpisodeEnabled: Boolean = true
     internal var isAppInForeground: Boolean = true
+    internal var isLiveUsageScreenActive: Boolean = false
+    internal val liveUsageOwner = "primary:${java.util.UUID.randomUUID()}"
     internal var shouldResumeAfterForeground: Boolean = false
     internal var seekPreviewRequestVersion: Long = 0L
     internal var lastMuteToggleAtMs: Long = 0L
@@ -568,16 +574,28 @@ class PlayerViewModel @Inject constructor(
         )
     }
 
+    private val stremioEventDispatcher = StremioPlaybackEventDispatcher(stremioAddonRepository)
     init {
         observeCastPlaybackEvents()
         viewModelScope.launch {
             while (true) {
+                stremioEventDispatcher.update(
+                    currentStremioPlaybackReference, playerEngine.currentPosition.value,
+                    playerEngine.duration.value, playerEngine.isPlaying.value,
+                    playerEngine.playbackState.value == PlaybackState.READY,
+                    playerEngine.playbackState.value in setOf(PlaybackState.ENDED, PlaybackState.ERROR),
+                    SystemClock.elapsedRealtime(), playerEngine.playbackSpeed.value
+                )
                 reportTraktPlayback()
+                reportLiveUsage()
                 delay(500)
             }
         }
         viewModelScope.launch {
-            currentChannelFlow.collect { refreshCurrentPlaybackQualityPreferenceScope() }
+            currentChannelFlow.collect {
+                refreshCurrentPlaybackQualityPreferenceScope()
+                reportLiveUsage()
+            }
         }
         viewModelScope.launch {
             _currentSeries.collect { refreshCurrentPlaybackQualityPreferenceScope() }
@@ -625,7 +643,11 @@ class PlayerViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            activePlayerEngineFlow.flatMapLatest { it.isPlaying }.collect { reportLiveUsage() }
+        }
+        viewModelScope.launch {
             activePlayerEngineFlow.flatMapLatest { it.playbackState }.collect { state ->
+                reportLiveUsage()
                 _playerDiagnostics.update { it.copy(playbackStateLabel = state.name.replace('_', ' ')) }
                 if (state == PlaybackState.ENDED && lastObservedPlaybackState != PlaybackState.ENDED) {
                     reportTraktPlayback(state)
@@ -637,6 +659,7 @@ class PlayerViewModel @Inject constructor(
                     dismissRecoveredNoticeIfPresent()
                     if (currentContentType == ContentType.LIVE && !isCatchUpPlayback()) {
                         livePlaybackReadyForCurrentSession = true
+                        reportLiveUsage()
                         recordActiveLivePlayback()
                         currentChannelFlow.value?.sanitizedForPlayer()?.let { channel ->
                             if (channel.errorCount > 0) {
@@ -1042,7 +1065,9 @@ class PlayerViewModel @Inject constructor(
                 channel = currentChannelFlow.value?.sanitizedForPlayer(),
                 isCatchUp = isCatchUpPlayback(),
                 currentProgramHasArchive = currentProgram.value?.hasArchive == true,
-                livePlaybackReady = livePlaybackReadyForCurrentSession
+                livePlaybackReady = livePlaybackReadyForCurrentSession,
+                requestedAudioDecoderMode = preferredAudioDecoderMode,
+                requestedVideoDecoderMode = preferredVideoDecoderMode
             ),
             sessionScope = playbackSessionScope(requestVersion),
             port = playerRecoveryExecutionPort
@@ -1117,6 +1142,11 @@ class PlayerViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 1f)
     internal val subtitleBackgroundColor = playerPreferencesCoordinator.playerSubtitleBackgroundColor
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0x80000000.toInt())
+
+    val refreshRateMatchingEnabled: StateFlow<Boolean> by lazy(LazyThreadSafetyMode.NONE) {
+        playerPreferencesCoordinator.playerRefreshRateMatchingEnabled
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    }
 
     val preventStandbyDuringPlayback: StateFlow<Boolean> by lazy(LazyThreadSafetyMode.NONE) {
         playerPreferencesCoordinator.preventStandbyDuringPlayback
@@ -1408,6 +1438,7 @@ class PlayerViewModel @Inject constructor(
     fun selectStremioSubtitle(option: StremioPlayerSubtitleOption) {
         if (option !in _stremioSubtitlePickerState.value.options) return
         val uri = option.url.trim().toHttpUrlOrNull()?.toString()?.let { Uri.parse(it) } ?: return
+        clearRememberedOpenSubtitleForCurrentContent()
         playerEngine.addExternalSubtitle(uri, option.languageTag, option.label, SubtitleTrackSource.STREMIO)
     }
 
@@ -1536,6 +1567,7 @@ class PlayerViewModel @Inject constructor(
                 seriesId = currentSeriesId
             )
         }
+        activeVodTrackPreferences = withoutMissingRememberedOpenSubtitle(activeVodTrackPreferences)
 
         val preparationResult = playerPreparationCoordinator.prepare(
             request = PlayerPreparationCoordinator.Request(
@@ -1571,6 +1603,8 @@ class PlayerViewModel @Inject constructor(
 
         val success = preparationResult as PlayerPreparationCoordinator.Result.Success
         success.probeCacheKey?.let(probePassedPlaybackKeys::add)
+        if (!isCurrent()) return false
+        restoreRememberedOpenSubtitle()
         if (!isCurrent()) return false
         currentResolvedPlaybackUrl = success.streamInfo.url
         currentResolvedStreamInfo = success.streamInfo
@@ -2043,6 +2077,8 @@ class PlayerViewModel @Inject constructor(
     )?.url
 
     override fun onCleared() {
+        reportLiveUsage(stop = true)
+        stremioEventDispatcher.close()
         playerTraktCoordinator.close()
         playbackSessionCoordinator.invalidate()
         playerPreparationCoordinator.stopPlayback(currentResolvedStreamInfo)

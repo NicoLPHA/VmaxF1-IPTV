@@ -116,7 +116,8 @@ data class StremioPlaybackHistoryBackup(
     val isWatched: Boolean,
     val lastWatchedAt: Long,
     val catalogOriginKey: String,
-    val streamOriginKeyHint: String?
+    val streamOriginKeyHint: String?,
+    val dismissedAtMs: Long = 0L
 )
 
 data class ProviderBackupSnapshot(
@@ -142,6 +143,10 @@ data class PortableProviderPreferencesBackup(
     val activeProvider: BackupProviderReference? = null,
     val guideDefaultCategory: PortableCategoryReference? = null,
     val guideDefaultVirtualCategoryId: Long? = null,
+    /** Provider-owned custom favorite group used as the Guide's startup category. */
+    val guideDefaultVirtualGroup: PortableVirtualGroupReference? = null,
+    /** Combined M3U category label; its stable synthetic ID is recomputed on restore. */
+    val guideDefaultCombinedCategoryName: String? = null,
     val guideDefaultCategorySpecified: Boolean = false,
     val promotedLiveGroups: List<PortableVirtualGroupReference> = emptyList(),
     val hiddenChannels: List<PortableChannelReference> = emptyList(),
@@ -152,6 +157,17 @@ data class PortableProviderPreferencesBackup(
     /** Per-provider category ordering choices, resolved by provider identity on import. */
     val categorySortModes: List<PortableCategorySortReference> = emptyList(),
     val categorySortModesSpecified: Boolean = false,
+    /** Null for backups created before provider category arrangements were portable. */
+    val providerLiveCategoryOrders: List<PortableProviderLiveCategoryOrderBackup>? = null,
+    /** Provider and category/channel references in these records never use local Room IDs. */
+    val liveChannelOrders: List<PortableLiveChannelOrderBackup> = emptyList(),
+    val liveChannelOrdersSpecified: Boolean = false,
+    /** Combined-source orders use the stable profile and provider/remote-stream identities. */
+    val combinedLiveChannelOrders: List<PortableCombinedLiveChannelOrderBackup> = emptyList(),
+    val combinedLiveChannelOrdersSpecified: Boolean = false,
+    /** Combined category sections use profile identity and normalized remote category names. */
+    val combinedLiveCategoryOrders: List<PortableCombinedCategoryOrderBackup> = emptyList(),
+    val combinedLiveCategoryOrdersSpecified: Boolean = false,
     /** Per-provider EPG time corrections, resolved by provider identity on import. */
     val epgTimeShifts: List<PortableEpgTimeShiftReference> = emptyList(),
     val epgTimeShiftsSpecified: Boolean = false,
@@ -193,7 +209,9 @@ data class PortableCategoryReference(
 data class PortableVirtualGroupReference(
     val provider: BackupProviderReference,
     val name: String,
-    val contentType: ContentType
+    val contentType: ContentType,
+    /** Stable group identity; absent in older backups that used provider plus name. */
+    val identityKey: String? = null
 )
 
 data class PortableChannelReference(
@@ -215,6 +233,54 @@ data class PortableCategorySortReference(
     val provider: BackupProviderReference,
     val type: ContentType,
     val mode: String
+)
+
+data class PortableProviderLiveCategoryOrderBackup(
+    val provider: BackupProviderReference,
+    val normalCategoryIds: List<Long> = emptyList(),
+    val pinnedOrderCategoryIds: List<Long> = emptyList(),
+    /** Built-in keys or group UUIDs, never local group row IDs. */
+    val personalKeys: List<String> = emptyList()
+)
+
+data class PortableLiveChannelOrderBackup(
+    val provider: BackupProviderReference,
+    /** Null for All Channels, Favorites, and custom groups; inspect the scope discriminator below. */
+    val category: PortableCategoryReference? = null,
+    val mode: String,
+    /** One entry per stable remote stream identity, including grouped quality variants. */
+    val manualChannels: List<PortableLiveChannelIdentity> = emptyList(),
+    /** Separates Favorites from All Channels when category is null. */
+    val isFavorites: Boolean = false,
+    /** Non-null only for a provider-owned custom group order. */
+    val group: PortableVirtualGroupReference? = null
+)
+
+data class PortableLiveChannelIdentity(
+    val provider: BackupProviderReference,
+    val streamId: Long
+) {
+    init {
+        require(streamId != 0L)
+    }
+}
+
+data class PortableCombinedLiveChannelOrderBackup(
+    val profileIdentityKey: String,
+    /** Stable combined category key, or `live:all` for the combined All Channels list. */
+    val categoryKey: String,
+    val categoryName: String? = null,
+    val mode: String,
+    val manualChannels: List<PortableLiveChannelIdentity> = emptyList()
+)
+
+/** Combined category IDs are derived at runtime; backups contain normalized category identities. */
+data class PortableCombinedCategoryOrderBackup(
+    val profileIdentityKey: String,
+    val sortMode: String,
+    val normalCategoryKeys: List<String> = emptyList(),
+    val pinnedOrderCategoryKeys: List<String> = emptyList(),
+    val pinnedCategoryKeys: List<String> = emptyList()
 )
 
 data class PortableEpgTimeShiftReference(
@@ -280,7 +346,9 @@ data class PortableCustomGroupBackup(
     val icon: String? = null,
     val position: Int = 0,
     val createdAt: Long = 0L,
-    val members: List<PortableFavoriteBackup> = emptyList()
+    val members: List<PortableFavoriteBackup> = emptyList(),
+    /** Portable identity copied to the destination group so its order survives local ID changes. */
+    val identityKey: String? = null
 )
 
 data class PortablePlaybackHistoryBackup(
@@ -340,6 +408,8 @@ data class PortableSearchHistoryBackup(
 
 data class CombinedM3uProfileBackup(
     val name: String,
+    /** Stable profile identity; absent in backups created before combined ordering. */
+    val identityKey: String? = null,
     val enabled: Boolean = true,
     val members: List<CombinedM3uProfileMemberBackup> = emptyList(),
     val createdAt: Long = 0L,
@@ -356,6 +426,7 @@ data class ActiveLiveSourceBackup(
     val type: String,
     val provider: BackupProviderReference? = null,
     val combinedProfileName: String? = null,
+    val combinedProfileIdentityKey: String? = null,
     /** Ordered provider identities disambiguate duplicate combined-profile names. */
     val combinedProfileProviders: List<BackupProviderReference> = emptyList()
 )
@@ -464,7 +535,8 @@ data class BackupPreview(
     val protectedCategoryConflicts: Int,
     val recordingConflicts: Int,
     val stremioAddonCount: Int = 0,
-    val stremioAddonConflicts: Int = 0
+    val stremioAddonConflicts: Int = 0,
+    val availableSections: BackupExportPlan = BackupExportPlan()
 )
 
 data class BackupImportPlan(
@@ -477,6 +549,19 @@ data class BackupImportPlan(
     val importStremioAddons: Boolean = importPreferences,
     val conflictStrategy: BackupConflictStrategy = BackupConflictStrategy.KEEP_EXISTING
 )
+
+data class BackupExportPlan(
+    val exportPreferences: Boolean = true,
+    val exportProviders: Boolean = true,
+    val exportSavedLibrary: Boolean = true,
+    val exportPlaybackHistory: Boolean = true,
+    val exportMultiViewPresets: Boolean = true,
+    val exportRecordingSchedules: Boolean = true,
+    val exportStremioAddons: Boolean = true
+) {
+    val hasSections: Boolean get() = exportPreferences || exportProviders || exportSavedLibrary ||
+        exportPlaybackHistory || exportMultiViewPresets || exportRecordingSchedules || exportStremioAddons
+}
 
 enum class RecordingScheduleImportDisposition {
     IMPORTED,
@@ -545,7 +630,7 @@ interface BackupManager {
     /**
      * Exports the configuration to the provided URI string (SAF document URI)
      */
-    suspend fun exportConfig(uriString: String): com.streamvault.domain.model.Result<Unit>
+    suspend fun exportConfig(uriString: String, plan: BackupExportPlan = BackupExportPlan()): com.streamvault.domain.model.Result<Unit>
 
     /**
      * Reads a backup and returns a preview with conflict counts before importing.

@@ -41,6 +41,7 @@ fun CombinedM3uProfileEntity.toDomain(
     members: List<CombinedM3uProfileMember> = emptyList()
 ) = CombinedM3uProfile(
     id = id,
+    identityKey = identityKey,
     name = name,
     enabled = enabled,
     members = members,
@@ -96,6 +97,8 @@ fun ChannelEntity.toDomain(): Channel {
         catchUpSupported = catchUpSupported,
         catchUpDays = catchUpDays,
         catchUpSource = catchUpSource,
+        catchUpType = catchUpType,
+        catchUpCorrectionSeconds = catchUpCorrectionSeconds,
         providerId = providerId,
         isAdult = isAdult,
         isUserProtected = isUserProtected,
@@ -135,6 +138,8 @@ fun Channel.toEntity(): ChannelEntity {
         catchUpSupported = catchUpSupported,
         catchUpDays = catchUpDays,
         catchUpSource = catchUpSource.takeUnless { xtreamLiveToken != null },
+        catchUpType = catchUpType.takeUnless { xtreamLiveToken != null },
+        catchUpCorrectionSeconds = catchUpCorrectionSeconds,
         providerId = providerId,
         isAdult = isAdult,
         isUserProtected = isUserProtected,
@@ -488,7 +493,8 @@ fun VirtualGroupEntity.toDomain() = VirtualGroup(
     iconEmoji = iconEmoji,
     position = position,
     createdAt = createdAt,
-    contentType = contentType
+    contentType = contentType,
+    identityKey = identityKey
 )
 
 fun VirtualGroup.toEntity() = VirtualGroupEntity(
@@ -498,7 +504,8 @@ fun VirtualGroup.toEntity() = VirtualGroupEntity(
     iconEmoji = iconEmoji,
     position = position,
     createdAt = createdAt,
-    contentType = contentType
+    contentType = contentType,
+    identityKey = identityKey.takeIf(String::isNotBlank) ?: java.util.UUID.randomUUID().toString()
 )
 
 // ── Playback History ───────────────────────────────────────────────

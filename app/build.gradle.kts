@@ -81,8 +81,8 @@ android {
         applicationId = "com.vmax.iptv"
         minSdk = 25
         targetSdk = 36
-        versionCode = 23
-        versionName = "1.2.1"
+        versionCode = 27
+        versionName = "1.2.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "TRAKT_CLIENT_ID", buildStringLiteral(traktClientId))
         buildConfigField("String", "TRAKT_REDIRECT_URI", buildStringLiteral(traktRedirectUri))
@@ -387,6 +387,7 @@ abstract class MergeStartupRulesIntoBaselineProfileTask : DefaultTask() {
 
     testOptions {
         animationsDisabled = true
+        unitTests.isIncludeAndroidResources = true
     }
 
     lint {

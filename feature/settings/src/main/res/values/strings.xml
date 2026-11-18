@@ -174,6 +174,9 @@
     <string name="settings_ffmpeg_compatibility_memory">Remember compatibility fixes</string>
     <string name="settings_ffmpeg_compatibility_memory_subtitle">Reuse successful FFmpeg-backed audio fixes for this device and stream in future sessions.</string>
     <string name="settings_live_timeshift">Enable Local Live Rewind</string>
+    <string name="settings_m3u_catchup_query_format">M3U Catch-up Query Format</string>
+    <string name="settings_m3u_catchup_query_format_subtitle">Used for M3U channels without their own catch-up source. Leave blank to disable this fallback. Example: ?utc={utc}</string>
+    <string name="settings_m3u_catchup_query_format_disabled">Disabled</string>
     <string name="settings_live_timeshift_backend">Live Rewind Backend</string>
     <string name="settings_live_timeshift_backend_subtitle">Choose whether local live rewind buffers to app storage or bounded memory. Automatic prefers storage and falls back to memory when the storage backend is constrained.</string>
     <string name="settings_live_timeshift_depth">Local Live Rewind Depth</string>
@@ -371,6 +374,13 @@
     <string name="settings_status_expired">Expired</string>
     <string name="settings_status_disabled">Disabled</string>
     <string name="settings_status_unknown">Unknown</string>
+    <string name="settings_provider_connection_online">Online</string>
+    <string name="settings_provider_connection_unavailable">Unavailable</string>
+    <string name="settings_provider_connection_checking">Checking…</string>
+    <string name="settings_provider_connection_check_now">Check now</string>
+    <string name="settings_provider_connection_last_checked">Last checked</string>
+    <string name="settings_provider_connection_authentication_required">Sign-in required</string>
+    <string name="settings_provider_connection_unknown">Unknown</string>
     <string name="settings_select_level">Select Protection Level</string>
     <string name="settings_level_off_desc">OFF - No restrictions</string>
     <string name="settings_level_off_subtitle">Adult content appears everywhere.</string>
@@ -1016,4 +1026,28 @@
     <string name="settings_sports_custom_definition_file_error">Could not load this JSON file</string>
     <string name="settings_experimental_badge">Experimental</string>
     <string name="settings_sync_index_progress">%1$s · %2$s</string>
+    <string name="settings_refresh_rate_matching">Match content frame rate</string>
+    <string name="settings_refresh_rate_matching_description">Match the display refresh rate to the video for smoother motion. Requires display support; switching may briefly blank the screen.</string>
+    <string name="settings_epg_phone_qr_start">Show QR code</string>
+    <string name="settings_epg_phone_qr_stop">Stop pairing</string>
+    <string name="settings_epg_phone_qr_warning">Security: Pairing sends credentials without encryption over your local network. Use a trusted private Wi-Fi network only.</string>
+    <string name="settings_epg_phone_qr_complete">Added</string>
+    <string name="settings_epg_phone_qr_error">Error</string>
+    <string name="settings_backup_export_sections">Choose sections to export</string>
+    <string name="trakt_browser_sign_in">Sign in using browser</string>
+    <string name="trakt_phone_sign_in">Approve on another device</string>
+    <string name="trakt_device_instructions">Scan the QR code or open %1$s on your phone. Enter the code below and approve access. This screen connects automatically. If the code expires, cancel and try again.</string>
+    <string name="settings_text_size">Text size</string>
+    <string name="settings_text_size_default">Default (100%)</string>
+    <string name="settings_text_size_system">Follow device</string>
+    <string name="settings_text_size_custom">Custom</string>
+    <string name="settings_privacy_policy">Privacy Policy</string>
+    <string name="settings_category_reorder_channels">Reorder Channels</string>
+    <string name="settings_category_sort_manual">Manual</string>
+    <string name="settings_category_reorder_categories">Reorder categories</string>
+    <string name="settings_default_live_channel_order">Default channel order</string>
+    <string name="settings_live_order_save_failed">Could not save channel order. Try again.</string>
+    <string name="settings_live_order_recent">Recently watched</string>
+    <string name="settings_live_order_most">Most watched</string>
+    <string name="settings_live_order_usage_help">Watches qualify after 10 seconds of playback. Most watched totals playing time over the last 30 days.</string>
 </resources>

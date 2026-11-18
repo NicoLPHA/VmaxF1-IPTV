@@ -313,6 +313,13 @@
     <string name="settings_status_expired">Έληξε</string>
     <string name="settings_status_disabled">Απενεργοποιημένο</string>
     <string name="settings_status_unknown">Άγνωστο</string>
+    <string name="settings_provider_connection_online">Σε σύνδεση</string>
+    <string name="settings_provider_connection_unavailable">Μη διαθέσιμο</string>
+    <string name="settings_provider_connection_checking">Γίνεται έλεγχος…</string>
+    <string name="settings_provider_connection_check_now">Έλεγχος τώρα</string>
+    <string name="settings_provider_connection_last_checked">Τελευταίος έλεγχος</string>
+    <string name="settings_provider_connection_authentication_required">Απαιτείται σύνδεση</string>
+    <string name="settings_provider_connection_unknown">Άγνωστο</string>
     <string name="settings_select_level">Επιλέξτε επίπεδο προστασίας</string>
     <string name="settings_level_off_desc">ΑΠΕΝΕΡΓΟΠΟΙΗΜΕΝΟ - Χωρίς περιορισμούς</string>
     <string name="settings_level_off_subtitle">Περιεχόμενο ενηλίκων εμφανίζεται παντού.</string>
@@ -941,4 +948,31 @@
     <string name="settings_sports_custom_definition_file_error">Δεν ήταν δυνατή η φόρτωση αυτού του αρχείου JSON</string>
     <string name="settings_experimental_badge">Πειραματικό</string>
     <string name="settings_sync_index_progress">%1$s · %2$s</string>
+    <string name="settings_refresh_rate_matching">Αντιστοίχιση ρυθμού καρέ περιεχομένου</string>
+    <string name="settings_refresh_rate_matching_description">Προσαρμόζει τον ρυθμό ανανέωσης της οθόνης στο βίντεο για πιο ομαλή κίνηση. Απαιτεί υποστήριξη από την οθόνη· κατά την αλλαγή η οθόνη μπορεί να μαυρίσει στιγμιαία.</string>
+    <string name="settings_epg_phone_qr_start">Εμφάνιση κωδικού QR</string>
+    <string name="settings_epg_phone_qr_stop">Διακοπή σύζευξης</string>
+    <string name="settings_epg_phone_qr_warning">Ασφάλεια: Η σύζευξη στέλνει στοιχεία σύνδεσης χωρίς κρυπτογράφηση μέσω του τοπικού δικτύου σας. Χρησιμοποιήστε μόνο ιδιωτικό δίκτυο Wi-Fi που εμπιστεύεστε.</string>
+    <string name="settings_epg_phone_qr_complete">Προστέθηκε</string>
+    <string name="settings_epg_phone_qr_error">Σφάλμα</string>
+    <string name="settings_backup_export_sections">Επιλέξτε ενότητες για εξαγωγή</string>
+    <string name="settings_m3u_catchup_query_format">Μορφή ερωτήματος επανάληψης</string>
+    <string name="settings_m3u_catchup_query_format_subtitle">Χρησιμοποιείται για κανάλια M3U χωρίς δική τους πηγή επανάληψης. Αφήστε το κενό για να απενεργοποιήσετε αυτήν την εναλλακτική. Παράδειγμα: ?utc={utc}</string>
+    <string name="settings_m3u_catchup_query_format_disabled">Απενεργοποιημένο</string>
+    <string name="trakt_browser_sign_in">Σύνδεση μέσω προγράμματος περιήγησης</string>
+    <string name="trakt_phone_sign_in">Έγκριση σε άλλη συσκευή</string>
+    <string name="trakt_device_instructions">Σαρώστε τον κωδικό QR ή ανοίξτε το %1$s στο τηλέφωνο. Εισαγάγετε τον παρακάτω κωδικό και εγκρίνετε την πρόσβαση. Αυτή η οθόνη συνδέεται αυτόματα. Αν ο κωδικός λήξει, ακυρώστε και δοκιμάστε ξανά.</string>
+    <string name="settings_text_size">Μέγεθος κειμένου</string>
+    <string name="settings_text_size_default">Προεπιλογή (100%)</string>
+    <string name="settings_text_size_system">Σύμφωνα με τη συσκευή</string>
+    <string name="settings_text_size_custom">Προσαρμοσμένο</string>
+    <string name="settings_privacy_policy">Πολιτική απορρήτου</string>
+    <string name="settings_category_reorder_channels">Αναδιάταξη καναλιών</string>
+    <string name="settings_category_sort_manual">Χειροκίνητα</string>
+    <string name="settings_category_reorder_categories">Αναδιάταξη κατηγοριών</string>
+    <string name="settings_default_live_channel_order">Προεπιλεγμένη σειρά καναλιών</string>
+    <string name="settings_live_order_save_failed">Δεν ήταν δυνατή η αποθήκευση της σειράς καναλιών. Δοκιμάστε ξανά.</string>
+    <string name="settings_live_order_recent">Πρόσφατη παρακολούθηση</string>
+    <string name="settings_live_order_most">Μεγαλύτερος χρόνος θέασης</string>
+    <string name="settings_live_order_usage_help">Η προβολή μετρά μετά από 10 δευτερόλεπτα αναπαραγωγής. Η κατάταξη βασίζεται στον χρόνο αναπαραγωγής των τελευταίων 30 ημερών.</string>
 </resources>

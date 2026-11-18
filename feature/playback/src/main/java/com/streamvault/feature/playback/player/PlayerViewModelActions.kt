@@ -3,11 +3,13 @@ package com.streamvault.feature.playback.player
 import androidx.lifecycle.viewModelScope
 import com.streamvault.feature.playback.R
 import com.streamvault.domain.model.ContentType
+import com.streamvault.domain.model.ExactRecordingAlarmAccessException
 import com.streamvault.domain.model.RecordingRecurrence
 import com.streamvault.domain.model.RecordingRequest
 import com.streamvault.domain.model.Result
 import com.streamvault.domain.model.StreamInfo
 import com.streamvault.domain.usecase.ScheduleRecordingCommand
+import com.streamvault.domain.usecase.ScheduleRecordingWindowCommand
 import com.streamvault.feature.playback.R as PlaybackFeatureR
 import com.streamvault.feature.playback.api.CastMediaRequest
 import com.streamvault.feature.playback.cast.CastMediaRequestBuildResult
@@ -105,10 +107,17 @@ fun PlayerViewModel.stopCasting() {
     )
 }
 
+internal fun recordingFailureMessageRes(error: Result.Error): Int =
+    if (error.exception is ExactRecordingAlarmAccessException) {
+        R.string.player_recording_exact_alarm_required
+    } else {
+        R.string.player_recording_failed_notice
+    }
+
 fun PlayerViewModel.startManualRecording() {
     val channel = currentChannel.value
     if (currentContentType != ContentType.LIVE || channel == null || currentProviderId <= 0) {
-        showPlayerNotice(message = "Recording needs a valid live channel context.")
+        showPlayerNotice(message = appContext.getString(R.string.player_recording_needs_live_channel))
         return
     }
     viewModelScope.launch {
@@ -120,15 +129,18 @@ fun PlayerViewModel.startManualRecording() {
                 channelName = channel.name,
                 streamUrl = currentStreamUrl,
                 scheduledStartMs = now,
-                scheduledEndMs = currentProgram.value?.endTime ?: (now + 30 * 60_000L),
+                scheduledEndMs = currentProgram.value?.endTime?.takeIf { it > now } ?: (now + 30 * 60_000L),
                 programTitle = currentProgram.value?.title
             )
         )
-        if (result is Result.Error) {
-            showPlayerNotice(message = result.message, recoveryType = PlayerRecoveryType.SOURCE)
-        } else {
-            showPlayerNotice(message = "Recording started for ${channel.name}.")
-        }
+        showPlayerNotice(
+            message = if (result is Result.Error) {
+                appContext.getString(recordingFailureMessageRes(result))
+            } else {
+                appContext.getString(R.string.player_recording_started_notice, channel.name)
+            },
+            recoveryType = if (result is Result.Error) PlayerRecoveryType.SOURCE else PlayerRecoveryType.UNKNOWN
+        )
     }
 }
 
@@ -144,6 +156,42 @@ fun PlayerViewModel.scheduleWeeklyRecording() {
     scheduleRecordingInternal(RecordingRecurrence.WEEKLY)
 }
 
+/** Schedules a live recording for an explicit time window, for channels without guide data. */
+fun PlayerViewModel.scheduleRecordingByTime(
+    startMs: Long,
+    endMs: Long,
+    recurrence: RecordingRecurrence
+) {
+    val channel = currentChannel.value
+    if (currentContentType != ContentType.LIVE || channel == null || currentProviderId <= 0) {
+        showPlayerNotice(message = appContext.getString(R.string.player_recording_needs_live_channel))
+        return
+    }
+    viewModelScope.launch {
+        val result = playerRecordingCoordinator.scheduleRecordingWindow(
+            ScheduleRecordingWindowCommand(
+                contentType = currentContentType,
+                providerId = currentProviderId,
+                channel = channel,
+                streamUrl = currentStreamUrl,
+                startMs = startMs,
+                endMs = endMs,
+                recurrence = recurrence,
+                title = channel.name
+            )
+        )
+        val title = (result as? Result.Success)?.data?.programTitle ?: channel.name
+        showPlayerNotice(
+            message = if (result is Result.Error) {
+                appContext.getString(recordingFailureMessageRes(result))
+            } else {
+                recordingScheduledNotice(recurrence, title)
+            },
+            recoveryType = if (result is Result.Error) PlayerRecoveryType.SOURCE else PlayerRecoveryType.UNKNOWN
+        )
+    }
+}
+
 private fun PlayerViewModel.scheduleRecordingInternal(recurrence: RecordingRecurrence) {
     viewModelScope.launch {
         val result = playerRecordingCoordinator.scheduleRecording(
@@ -157,30 +205,42 @@ private fun PlayerViewModel.scheduleRecordingInternal(recurrence: RecordingRecur
                 recurrence = recurrence
             )
         )
-        if (result is Result.Error) {
-            showPlayerNotice(message = result.message, recoveryType = PlayerRecoveryType.SOURCE)
-        } else {
-            val recurrenceLabel = when (recurrence) {
-                RecordingRecurrence.NONE -> ""
-                RecordingRecurrence.DAILY -> " daily"
-                RecordingRecurrence.WEEKLY -> " weekly"
-            }
-            val scheduledItem = (result as? Result.Success)?.data
-            val title = scheduledItem?.programTitle ?: "Recording"
-            showPlayerNotice(message = "$title scheduled$recurrenceLabel.")
-        }
+        val scheduledItem = (result as? Result.Success)?.data
+        val title = scheduledItem?.programTitle ?: currentTitle
+        showPlayerNotice(
+            message = if (result is Result.Error) {
+                appContext.getString(recordingFailureMessageRes(result))
+            } else {
+                recordingScheduledNotice(recurrence, title)
+            },
+            recoveryType = if (result is Result.Error) PlayerRecoveryType.SOURCE else PlayerRecoveryType.UNKNOWN
+        )
     }
 }
+
+private fun PlayerViewModel.recordingScheduledNotice(
+    recurrence: RecordingRecurrence,
+    title: String
+): String = appContext.getString(
+    when (recurrence) {
+        RecordingRecurrence.NONE -> R.string.player_recording_scheduled_notice
+        RecordingRecurrence.DAILY -> R.string.player_recording_scheduled_daily_notice
+        RecordingRecurrence.WEEKLY -> R.string.player_recording_scheduled_weekly_notice
+    },
+    title
+)
 
 fun PlayerViewModel.stopCurrentRecording() {
     val recording = currentChannelRecording.value ?: return
     viewModelScope.launch {
         val result = playerRecordingCoordinator.stopRecording(recording.id)
-        if (result is Result.Error) {
-            showPlayerNotice(message = result.message)
-        } else {
-            showPlayerNotice(message = "Recording stopped.")
-        }
+        showPlayerNotice(
+            message = if (result is Result.Error) {
+                appContext.getString(R.string.player_recording_failed_notice)
+            } else {
+                appContext.getString(R.string.player_recording_stopped_notice)
+            }
+        )
     }
 }
 

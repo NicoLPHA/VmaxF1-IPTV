@@ -352,6 +352,13 @@
     <string name="settings_status_expired">หมดอายุ</string>
     <string name="settings_status_disabled">ปิดใช้งาน</string>
     <string name="settings_status_unknown">ไม่ทราบ</string>
+    <string name="settings_provider_connection_online">ออนไลน์</string>
+    <string name="settings_provider_connection_unavailable">ไม่พร้อมใช้งาน</string>
+    <string name="settings_provider_connection_checking">กำลังตรวจสอบ…</string>
+    <string name="settings_provider_connection_check_now">ตรวจสอบตอนนี้</string>
+    <string name="settings_provider_connection_last_checked">ตรวจสอบล่าสุด</string>
+    <string name="settings_provider_connection_authentication_required">ต้องลงชื่อเข้าใช้</string>
+    <string name="settings_provider_connection_unknown">ไม่ทราบ</string>
     <string name="settings_select_level">เลือกระดับการป้องกัน</string>
     <string name="settings_level_off_desc">ปิด - ไม่มีข้อจำกัด</string>
     <string name="settings_level_off_subtitle">เนื้อหาผู้ใหญ่แสดงทุกที่</string>
@@ -936,4 +943,31 @@
     <string name="settings_sports_custom_definition_file_error">ไม่สามารถโหลดไฟล์ JSON นี้ได้</string>
     <string name="settings_experimental_badge">ฟีเจอร์ทดลอง</string>
     <string name="settings_sync_index_progress">%1$s · %2$s</string>
+    <string name="settings_refresh_rate_matching">ปรับให้ตรงกับอัตราเฟรมของเนื้อหา</string>
+    <string name="settings_refresh_rate_matching_description">ปรับอัตรารีเฟรชของจอแสดงผลให้ตรงกับวิดีโอเพื่อให้ภาพเคลื่อนไหวลื่นไหลขึ้น ต้องใช้จอที่รองรับ หน้าจออาจมืดชั่วครู่ขณะเปลี่ยน</string>
+    <string name="settings_epg_phone_qr_start">แสดงคิวอาร์โค้ด</string>
+    <string name="settings_epg_phone_qr_stop">หยุดจับคู่</string>
+    <string name="settings_epg_phone_qr_warning">ความปลอดภัย: การจับคู่จะส่งข้อมูลเข้าสู่ระบบผ่านเครือข่ายท้องถิ่นโดยไม่มีการเข้ารหัส ใช้เฉพาะเครือข่าย Wi-Fi ส่วนตัวที่เชื่อถือได้เท่านั้น</string>
+    <string name="settings_epg_phone_qr_complete">เพิ่มแล้ว</string>
+    <string name="settings_epg_phone_qr_error">ข้อผิดพลาด</string>
+    <string name="settings_backup_export_sections">เลือกส่วนที่ต้องการส่งออก</string>
+    <string name="settings_m3u_catchup_query_format">รูปแบบคำขอรับชมย้อนหลัง</string>
+    <string name="settings_m3u_catchup_query_format_subtitle">ใช้กับช่อง M3U ที่ไม่มีแหล่งรับชมย้อนหลังของตนเอง เว้นว่างไว้เพื่อปิดรูปแบบสำรองนี้ ตัวอย่าง: ?utc={utc}</string>
+    <string name="settings_m3u_catchup_query_format_disabled">ปิดใช้งาน</string>
+    <string name="trakt_browser_sign_in">ลงชื่อเข้าใช้ผ่านเบราว์เซอร์</string>
+    <string name="trakt_phone_sign_in">อนุมัติบนอุปกรณ์อื่น</string>
+    <string name="trakt_device_instructions">สแกนรหัส QR หรือเปิด %1$s บนโทรศัพท์ ป้อนรหัสด้านล่างและอนุมัติการเข้าถึง หน้าจอนี้จะเชื่อมต่อโดยอัตโนมัติ หากรหัสหมดอายุ ให้ยกเลิกแล้วลองอีกครั้ง</string>
+    <string name="settings_text_size">ขนาดข้อความ</string>
+    <string name="settings_text_size_default">ค่าเริ่มต้น (100%)</string>
+    <string name="settings_text_size_system">ตามการตั้งค่าอุปกรณ์</string>
+    <string name="settings_text_size_custom">กำหนดเอง</string>
+    <string name="settings_privacy_policy">นโยบายความเป็นส่วนตัว</string>
+    <string name="settings_category_reorder_channels">จัดลำดับช่องใหม่</string>
+    <string name="settings_category_sort_manual">ด้วยตนเอง</string>
+    <string name="settings_category_reorder_categories">จัดลำดับหมวดหมู่ใหม่</string>
+    <string name="settings_default_live_channel_order">ลำดับช่องเริ่มต้น</string>
+    <string name="settings_live_order_save_failed">ไม่สามารถบันทึกลำดับช่องได้ โปรดลองอีกครั้ง</string>
+    <string name="settings_live_order_recent">ดูล่าสุด</string>
+    <string name="settings_live_order_most">ดูมากที่สุด</string>
+    <string name="settings_live_order_usage_help">การรับชมจะถูกนับหลังเล่นครบ 10 วินาที ดูมากที่สุดจะรวมเวลาเล่นในช่วง 30 วันที่ผ่านมา</string>
 </resources>

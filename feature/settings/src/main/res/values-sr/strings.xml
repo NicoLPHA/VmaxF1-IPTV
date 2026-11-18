@@ -354,6 +354,13 @@
     <string name="settings_status_expired">Истекло</string>
     <string name="settings_status_disabled">Онемогућено</string>
     <string name="settings_status_unknown">Непознато</string>
+    <string name="settings_provider_connection_online">На мрежи</string>
+    <string name="settings_provider_connection_unavailable">Недоступно</string>
+    <string name="settings_provider_connection_checking">Провера…</string>
+    <string name="settings_provider_connection_check_now">Провери сада</string>
+    <string name="settings_provider_connection_last_checked">Последња провера</string>
+    <string name="settings_provider_connection_authentication_required">Потребна је пријава</string>
+    <string name="settings_provider_connection_unknown">Непознато</string>
     <string name="settings_select_level">Изаберите ниво заштите</string>
     <string name="settings_level_off_desc">ИСКЉУЧЕНО - без ограничења</string>
     <string name="settings_level_off_subtitle">Садржај за одрасле се приказује свуда.</string>
@@ -942,4 +949,31 @@
     <string name="settings_sports_custom_definition_file_error">Није могуће учитати ову JSON датотеку</string>
     <string name="settings_experimental_badge">Експериментално</string>
     <string name="settings_sync_index_progress">%1$s · %2$s</string>
+    <string name="settings_refresh_rate_matching">Усклади са брзином кадрова садржаја</string>
+    <string name="settings_refresh_rate_matching_description">Усклађује учесталост освежавања екрана са видеом ради глаткијег кретања. Потребна је подршка екрана; при промени екран може накратко да се зацрни.</string>
+    <string name="settings_epg_phone_qr_start">Прикажи QR код</string>
+    <string name="settings_epg_phone_qr_stop">Заустави упаривање</string>
+    <string name="settings_epg_phone_qr_warning">Безбедност: Упаривање шаље податке за пријаву нешифроване преко локалне мреже. Користите само поуздану приватну Wi-Fi мрежу.</string>
+    <string name="settings_epg_phone_qr_complete">Додато</string>
+    <string name="settings_epg_phone_qr_error">Грешка</string>
+    <string name="settings_backup_export_sections">Изаберите одељке за извоз</string>
+    <string name="settings_m3u_catchup_query_format">Формат упита за репродукцију архиве</string>
+    <string name="settings_m3u_catchup_query_format_subtitle">Користи се за M3U канале без сопственог извора за репродукцију архиве. Оставите празно да бисте искључили овај резервни формат. Пример: ?utc={utc}</string>
+    <string name="settings_m3u_catchup_query_format_disabled">Искључено</string>
+    <string name="trakt_browser_sign_in">Пријави се преко прегледача</string>
+    <string name="trakt_phone_sign_in">Одобри на другом уређају</string>
+    <string name="trakt_device_instructions">Скенирајте QR код или отворите %1$s на телефону. Унесите код испод и одобрите приступ. Овај екран се аутоматски повезује. Ако код истекне, откажите и покушајте поново.</string>
+    <string name="settings_text_size">Величина текста</string>
+    <string name="settings_text_size_default">Подразумевано (100%)</string>
+    <string name="settings_text_size_system">Према уређају</string>
+    <string name="settings_text_size_custom">Прилагођено</string>
+    <string name="settings_privacy_policy">Политика приватности</string>
+    <string name="settings_category_reorder_channels">Преуреди канале</string>
+    <string name="settings_category_sort_manual">Ручно</string>
+    <string name="settings_category_reorder_categories">Промени редослед категорија</string>
+    <string name="settings_default_live_channel_order">Подразумевани редослед канала</string>
+    <string name="settings_live_order_save_failed">Није могуће сачувати редослед канала. Покушајте поново.</string>
+    <string name="settings_live_order_recent">Недавно гледани</string>
+    <string name="settings_live_order_most">Најгледанији</string>
+    <string name="settings_live_order_usage_help">Гледање се рачуна после 10 секунди репродукције. Најгледанији сабира време репродукције у последњих 30 дана.</string>
 </resources>

@@ -354,6 +354,13 @@
     <string name="settings_status_expired">Isteklo</string>
     <string name="settings_status_disabled">Onemogućeno</string>
     <string name="settings_status_unknown">Nepoznato</string>
+    <string name="settings_provider_connection_online">Na mreži</string>
+    <string name="settings_provider_connection_unavailable">Nedostupno</string>
+    <string name="settings_provider_connection_checking">Provjerava se…</string>
+    <string name="settings_provider_connection_check_now">Provjeri sada</string>
+    <string name="settings_provider_connection_last_checked">Zadnja provjera</string>
+    <string name="settings_provider_connection_authentication_required">Potrebna je prijava</string>
+    <string name="settings_provider_connection_unknown">Nepoznato</string>
     <string name="settings_select_level">Odaberite razinu zaštite</string>
     <string name="settings_level_off_desc">ISKLJUČENO - Bez ograničenja</string>
     <string name="settings_level_off_subtitle">Sadržaj za odrasle prikazuje se posvuda.</string>
@@ -942,4 +949,31 @@
     <string name="settings_sports_custom_definition_file_error">Nije moguće učitati ovu JSON datoteku</string>
     <string name="settings_experimental_badge">Eksperimentalno</string>
     <string name="settings_sync_index_progress">%1$s · %2$s</string>
+    <string name="settings_refresh_rate_matching">Uskladi s brzinom kadrova sadržaja</string>
+    <string name="settings_refresh_rate_matching_description">Usklađuje frekvenciju osvježavanja zaslona s videozapisom za glađe pokrete. Zahtijeva podršku zaslona; zaslon se pri promjeni može nakratko zacrniti.</string>
+    <string name="settings_epg_phone_qr_start">Prikaži QR kod</string>
+    <string name="settings_epg_phone_qr_stop">Zaustavi uparivanje</string>
+    <string name="settings_epg_phone_qr_warning">Sigurnost: Uparivanje šalje podatke za prijavu nešifrirane putem vaše lokalne mreže. Koristite samo pouzdanu privatnu Wi-Fi mrežu.</string>
+    <string name="settings_epg_phone_qr_complete">Dodano</string>
+    <string name="settings_epg_phone_qr_error">Pogreška</string>
+    <string name="settings_backup_export_sections">Odaberite odjeljke za izvoz</string>
+    <string name="settings_m3u_catchup_query_format">Format upita za reprodukciju arhive</string>
+    <string name="settings_m3u_catchup_query_format_subtitle">Koristi se za M3U kanale koji nemaju vlastiti izvor arhivske reprodukcije. Ostavite prazno da biste isključili ovaj zamjenski format. Primjer: ?utc={utc}</string>
+    <string name="settings_m3u_catchup_query_format_disabled">Isključeno</string>
+    <string name="trakt_browser_sign_in">Prijava putem preglednika</string>
+    <string name="trakt_phone_sign_in">Odobri na drugom uređaju</string>
+    <string name="trakt_device_instructions">Skenirajte QR kod ili otvorite %1$s na telefonu. Unesite kod u nastavku i odobrite pristup. Ovaj se zaslon automatski povezuje. Ako kod istekne, odustanite i pokušajte ponovno.</string>
+    <string name="settings_text_size">Veličina teksta</string>
+    <string name="settings_text_size_default">Zadano (100%)</string>
+    <string name="settings_text_size_system">Prema uređaju</string>
+    <string name="settings_text_size_custom">Prilagođeno</string>
+    <string name="settings_privacy_policy">Pravila privatnosti</string>
+    <string name="settings_category_reorder_channels">Promijeni redoslijed kanala</string>
+    <string name="settings_category_sort_manual">Ručno</string>
+    <string name="settings_category_reorder_categories">Promijeni redoslijed kategorija</string>
+    <string name="settings_default_live_channel_order">Zadani redoslijed kanala</string>
+    <string name="settings_live_order_save_failed">Redoslijed kanala nije moguće spremiti. Pokušajte ponovno.</string>
+    <string name="settings_live_order_recent">Nedavno gledani</string>
+    <string name="settings_live_order_most">Najgledaniji</string>
+    <string name="settings_live_order_usage_help">Gledanje se računa nakon 10 sekundi reprodukcije. Najgledaniji zbraja vrijeme reprodukcije u posljednjih 30 dana.</string>
 </resources>

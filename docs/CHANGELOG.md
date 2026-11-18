@@ -2,6 +2,149 @@
 
 All notable product changes are recorded in this document.
 
+## [1.2.5]
+
+### Added
+- Added Live TV category and channel ordering for individual providers and combined profiles, with manual arrangements, alphabetical sorting, and recently or most watched channels.
+- Added QR pairing to reorder and pin Live TV categories and arrange their channels from a phone, with multi-select, position controls, undo and redo.
+- Added backup and restore support for category and channel order, including safe migration of existing combined profiles.
+- Added a redesigned Live TV overlay for Android TV with channel and programme information, a single D-pad action row, and on-screen DVR controls for rewind, play/pause, forward and jump to live.
+- Added Live TV subtitle and audio side sheets on Android TV, including subtitle tracks, real-time translation, subtitle delay and loading subtitles from the device.
+- Added localized "Closed Captions" naming for in-band CEA-608/708 caption tracks, numbered when a stream has more than one.
+- Added per-channel M3U request headers from Kodi/Xtream-style `url|Referer=...&User-Agent=...` suffixes, plus playlist-level and per-entry `user-agent` attributes, so channels that require a Referer or custom User-Agent can open.
+- Added Stremio add-on subtitle and Cast request-header messages across all 38 advertised locales.
+
+### Changed
+- Automatic sync now runs during playback and recording by default; the existing setting can still defer it, and saved preferences are preserved.
+- Live TV subtitle, audio and delay menus now open in the same end-edge side sheet as More, and the overlay idle timer pauses while a side sheet is open.
+- Raised the default Live TV overlay timeout from 4 to 6 seconds.
+- Recording action labels now use higher-contrast text and TV-readable typography.
+- Refined Turkish localization for Android TV, including IPTV/EPG terminology, plural and percentage formatting, and shorter labels for TV layouts.
+
+### Fixed
+- Fixed low-memory VOD playback ignoring explicit MEDIUM or LARGE buffer duration preferences; AUTO keeps its conservative low-memory policy.
+- Fixed manual Stalker and Xtream movie and series sync resuming an unfinished scan without revisiting already scanned categories; manual refresh now starts a new scan and reloads categories.
+- Fixed Xtream EPG indexing getting stuck after an interrupted sync by recovering orphaned workflow phases and persisting the result of forced EPG retries.
+- Improved Stremio account sync for large libraries by processing imports in batches, preserving partial progress for retries, and adding privacy-safe failure diagnostics. Failed syncs no longer update the last successful sync time.
+- Fixed Live TV overlay focus and Back handling on Android TV: Back and Info close an open tray before the overlay, focus returns to the pill that opened it, and focus no longer resets when buffering changes the track lists.
+- Fixed the Live TV side-sheet channel line reordering in right-to-left languages, and added a localized empty state when the audio sheet has no tracks.
+- Fixed downloads remaining pending indefinitely after repeated temporary failures; the final retry can now run and report a failure if it does not succeed.
+- Fixed the TV Guide showing no channels or stopping early when hidden categories occur before visible channels; guide controls now remain available in the empty state.
+- Fixed TV D-pad navigation getting trapped in Search, Guide category filter, and Category Controls fields; arrow keys now move the cursor within text and move focus to adjacent controls at text boundaries.
+- Fixed TV Guide focus returning to the first channel after leaving full-screen playback or loading more channels; the guide now restores the playing channel and keeps focus while paging.
+- Fixed TS and HLS recordings ending before their scheduled stop being reported as complete; early stream ends are retried and failed captures retain non-empty partial output for playback.
+- Fixed recording stop and foreground-timeout races overwriting terminal status, and made saved partial recordings playable from the recording browser.
+- Fixed Xtream live recordings being classified from stale container metadata instead of the resolved stream URL, which could select the HLS recorder for an MPEG-TS stream and leave a zero-byte recording.
+- Fixed downloaded external subtitles not being recognized or auto-selected when Media3 prefixes their track IDs during source merging.
+- Fixed TV focus jumping to Home when opening Downloads or switching Series and Movies to Saved/full-library browsing; focus now returns to screen content, with the active tab as a fallback.
+- Fixed M3U entries that pass request headers as Kodi/Xtream-style `url|Referer=...&User-Agent=...` suffixes being rejected during import instead of applied at playback.
+
+## [1.2.4]
+
+### Added
+- Added app-wide text sizing controls, defaulting to 100%, with options to follow the device setting or choose a custom size from 80% to 150%.
+- Added Trakt sign-in choices for browser authorization or device-code approval from a phone, with a QR code and encrypted recovery of pending approvals.
+- Expanded Stremio catalog support for live TV and custom media types, configurable catalog filters, add-on discovery, and an in-app programme guide.
+- Added Stremio account device linking, encrypted local credentials, linked add-on imports, and two-way library and viewing-progress sync, including watched episode state.
+- Added Home Continue Watching, Recently Watched and Up Next, Android TV Watch Next integration, resume/start-over/dismiss actions, library sorting, and season/show watched controls. Dismissed progress is preserved in backups.
+- Added per-series release tracking, an upcoming episode calendar, and periodic background notifications for new episodes.
+- Added support for Stremio stream metadata, inline and add-on subtitles, activity events, torrent handoff, external playback, and IPFS/IPNS HTTP gateway URLs.
+- Added an optional Stremio Service connection for archive, FTP and Usenet streams. The service runs separately from the Android app.
+- Added Stremio item deep links and localized new account, viewing and notification content in all 38 advertised locales.
+
+### Changed
+- Stremio library and playback history now retain add-on identity and exact video IDs across navigation, resume, backups and Android TV Watch Next.
+- Stremio live TV catalogs and programme guides are available under Extensions; they do not become IPTV provider channels in the main Live TV tab.
+
+### Fixed
+- Fixed Trakt sign-in staying pending when the browser does not return to StreamVault by adding a direct app handoff fallback.
+- Fixed Xtream movie and series refresh recovery: failed categories no longer loop without progress, retries resume from saved checkpoints, Settings returns control after work is queued, and deleted VOD items are reconciled only after a complete successful refresh.
+- Fixed archive seeks through Stremio Service by preventing an extra response byte from corrupting later requests on a reused connection.
+- Fixed VOD player controls disappearing while navigating with the remote; the idle timer now restarts after each key press.
+- Raised XMLTV ingestion limits for very large feeds to 2 GiB downloaded and 4 GiB decompressed while keeping parsing streamed.
+- Fixed torrent playback on Android devices with 16 KiB memory pages by updating bundled native libraries.
+- Fixed SMB recording playback by avoiding provider-stream resolution for app-private recording URIs.
+- Fixed the EPG phone pairing panel title and explanatory text rendering black in dark mode; its text now follows the active theme colors.
+
+## [1.2.3]
+
+### Added
+- Added support for launcher shortcuts to open the Downloads screen directly.
+- Added backup export selection so you can choose which sections to include when saving, sharing, or uploading a backup to Google Drive.
+- Added QR-based phone setup for EPG sources and Stremio add-ons, so their URLs can be submitted from a phone on the same local network.
+- Added recognition of Brazilian Portuguese sports listings, including matchups, broadcast notes, and Brazilian and South American competitions.
+
+### Changed
+- Improved M3U catch-up playback by preserving playlist replay modes and time corrections, supporting additional replay URL formats, and adding a configurable fallback query format. Eligible past guide programmes can now play when replay is advertised but the archive window is unspecified.
+- Channel, movie, series, and VOD category searches now ignore Latin accents (for example, “café” matches “cafe”). Existing catalogs upgrade automatically, with their content preserved.
+- Reduced HLS playback allocations and released obsolete live-stream cache data while preserving resources needed by playback and shared recordings.
+- Reduced background UI work during playback by stopping hidden playback controls from collecting state updates; reopening controls and open settings or chapter sheets continue receiving current values.
+- Improved playback interruption diagnostics to distinguish rebuffering from dropped frames and track interruption durations more accurately.
+- VOD timelines can now be scrubbed with the D-pad in 10-second steps; holding a direction previews repeated seeks, and releasing applies the selected position.
+
+### Fixed
+- Fixed live TV continuing to play in the background after leaving the player, including when exiting while a channel was still loading. Playback and the Android media session are now released immediately, and abandoned Home or Guide previews are closed.
+- Fixed Hardware Only video decoding being overridden after live TV stalls; recovery now preserves explicit audio and video decoder settings and excludes software video decoders in Hardware Only mode.
+- Fixed channel numbers appearing in Guide Favorites views and selected-channel details when Live TV numbering is set to Hidden.
+- Fixed external subtitles disappearing after playback retries, reconnects, buffering, or when replaying a movie: attached subtitles are restored with the rebuilt source, downloaded OpenSubtitles files are kept in durable app storage and remembered for that movie, and replaced subtitle files are cleaned up.
+- Fixed M3U catch-up URL generation for legacy date placeholders and additional provider path/query styles, and stopped offering archive playback when the configured fallback cannot build a URL.
+- Fixed the player showing a generic recording error when Android alarm access is missing; it now explains how to enable access and retry.
+- Fixed the temporary torrent cache clear action to confirm when the cache was cleared successfully.
+- Fixed deleted downloads leaving partial files behind after earlier failed attempts.
+- Fixed TV remote navigation on Downloads so playback and delete actions, confirmation buttons, and items remain reachable and focused.
+- Fixed interruptions during on-demand playback when an idle connection closes, by retrying the interrupted download in place.
+- Fixed Android TV guide publication failing when the platform rejects SQL filters on programme queries.
+- Fixed eligible live MPEG-TS channels remaining unavailable after an Android TV-input video surface was recreated; playback now makes one safe recovery attempt.
+- Fixed interrupted Stalker guide downloads being marked fresh and losing automatic retry; useful partial guide data is retained until a complete refresh succeeds.
+- Fixed automatic guide refreshes stopping after temporary HTTP errors such as 429 and 503; they now retain cached guide data and retry, while authentication failures remain terminal.
+- Fixed a Sports tab crash on Android 11 when initializing Brazilian Portuguese EPG title parsing.
+- Fixed HLS playback failing on master playlists with `EXT-X-MEDIA` rendition tags missing the required `NAME` attribute.
+- Fixed some more backup and restore bugs.
+- Fixed sports listings ending in `- VT` appearing as scheduled matches instead of replays, and localized the new league names in Sports.
+- Fixed automatic background EPG refreshes and freshness-repair jobs ignoring the defer-while-busy preference during playback, while preserving manual refreshes and explicit overlap settings.
+- Fixed M3U guide imports already in progress continuing after playback starts; they now defer safely, retain existing guide data, and can retry after playback stops.
+- Fixed automatic Xtream bulk live-channel imports continuing during playback; they now yield safely and can retry when idle without replacing the existing channel list with partial data.
+- Fixed Stalker automatic indexing missing live playback from the same provider when deciding whether to defer background work.
+- Fixed Android TV-input playback not being recognized by background-sync scheduling, allowing automatic catalog and guide work to run despite defer-while-busy settings.
+- Fixed incorrect frame-rate estimates for streams with missing frame-rate metadata or rounded video timestamps.
+- Fixed repeated live HLS rebuffering in manual buffer modes when playback started too close to the live edge.
+- Fixed long pauses between reads in Medium and Large buffer modes causing idle-sensitive live MPEG-TS connections to close.
+- Fixed raw MPEG-TS H.264 picture freezes caused by header-only decoder samples with duplicate timestamps.
+- Improved bounded recovery from temporarily unavailable or expired live HLS media segments while preserving terminal authentication errors.
+- Fixed optional HLS subtitle loading blocking audio/video prefetch on affected live streams.
+- Fixed live streams remaining stuck before the first frame by allowing one recovery attempt and reporting failure if startup still cannot complete, including Android TV-input playback.
+- Added one bounded recovery attempt when an eligible live MPEG-TS stream ends unexpectedly, including Android TV-input playback, while preserving normal end-of-playback behavior for finite content.
+- Fixed shared HLS recording restarts losing required encryption keys or initialization data.
+- Fixed SMB recording setup failing on authenticated shares in release builds by retaining the MD4 support required by NTLM during code shrinking.
+
+## [1.2.2]
+
+### Added
+- Added default-on content frame-rate matching for video playback, with a Playback setting to turn it off and device-supported display refresh-rate switching for smoother motion.
+- Added provider connection checks to Settings → Providers, separate from sync state and **In use**, with Online, Unavailable, Authentication required, and Unknown statuses, a last-checked time, and a manual recheck action. Checks run when the section opens and refresh when results are more than five minutes old.
+- Added time-based recording scheduling so live channels without EPG data can be recorded for a chosen start time and duration, with daily and weekly repeat options, from the player's recording menu.
+
+### Changed
+- Stalker setup now proceeds with HTTP portals without transport consent warnings.
+- Improved Stalker catalog sync for large libraries with bounded, resumable movie and series indexing that runs in parallel by default, optional Movies first or Series first ordering, and EPG work that can proceed independently.
+- Localized player recording notices and EPG recording messages across all supported locales.
+- Xtream series details now refresh every six hours and Stalker series details every 24 hours instead of every 14 days, so newly aired episodes appear promptly and incomplete episode caches repair themselves.
+- Reduced peak memory during large M3U syncs by using staged database keys for duplicate detection and paged series reconciliation; Xtream and Stalker sync paths are unchanged.
+
+### Fixed
+- Fixed Stalker setup interruptions from redundant transport warning popups; transport retries now continue automatically, with any unresolved challenge shown inline.
+- Fixed the backup restore sync dialog using mismatched colors; its surface, text, and checkbox now follow the active app theme, and **Sync selected** stays disabled until a provider is selected.
+- Fixed Live TV remaining stuck loading after deleting a provider and adding another by clearing and validating the saved active source.
+- Fixed missing episodes from providers that return nested episode arrays or season-keyed episode maps, which were previously skipped and left series with no episodes.
+- Fixed episodes disappearing when an episode's optional metadata block arrived in an unexpected shape: the episode is now kept and only the metadata is skipped.
+- Fixed series pages that stayed empty after a failed details request: a failure with no cached episodes now shows a localized error, and a series with no episodes shows a localized empty state.
+- Fixed grouped series with multiple versions: a failed version switch now keeps the current version on screen and reports the failure, the preferred version is saved only after it loads, and a series whose version fails to load now offers the other versions on the error screen.
+- Fixed selected subtitles reverting to off by saving track details before track-list refreshes and keeping the player's active preference in sync with manual selections.
+- Fixed a compile failure in the recording-by-time dialog that prevented the app from building after the recording scheduling update, which also blocked Settings backup export and import.
+- Fixed audio stopping after a while.
+- Fixed the player crashing when scheduling a recording (Schedule, Record Daily, or Record Weekly): the recording coordinator called itself instead of the scheduling use case, causing a stack overflow.
+- Fixed the notification permission prompt running the recording action before the permission result was known.
+
 ## [1.2.1]
 
 ### Changed
@@ -53,7 +196,6 @@ All notable product changes are recorded in this document.
 
 ### Fixed
 
-- Fixed selected subtitles reverting to off by saving track details before the player refreshes its available subtitle list.
 - Fixed Guide schedules briefly appearing and disappearing during background updates, and missing provider EPG requests for channels loaded after the first page.
 - Fixed Jellyfin Quick Connect QR links to use the Web Quick Connect route and safely encode the pairing code.
 - Fixed QR provider pairing session cleanup and request validation, including expired sessions, malformed or oversized submissions, slow clients, and duplicate submissions.
@@ -159,7 +301,6 @@ All notable product changes are recorded in this document.
 - Fixed Xtream series showing an empty episode list after re-entering: a hydrated series whose local episodes went missing is now re-fetched, and re-hydration no longer replaces a larger cached episode set with a smaller, partially re-scraped provider response.
 - Fixed adaptive M3U metadata being dropped between playlist parsing, import staging, catalog synchronization, and channel or movie playback reconstruction.
 - Fixed Xtream Codes and Xtream M3U URL setup crashing on devices with a broken hardware-backed Keystore (such as some budget Android TV boxes): credential encryption now falls back to a software key instead of aborting when the device cannot generate a hardware key.
-- Fixed large full-country XMLTV guides (such as iptv-epg.org's epg-us.xml.gz) failing to import with an "EPG decompressed XML bytes exceeded safety limit" error by raising the raw-download, decompressed-XML, and programme ingestion ceilings, since the parser streams to the database rather than buffering the whole document in memory.
 - Fixed a freshly-added EPG source resolving to no matches after assignment by downloading it once on assignment before re-resolving the provider's guide mappings, so the source has programme data available when it is first used.
 
 ### Changed

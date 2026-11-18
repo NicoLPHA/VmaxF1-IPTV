@@ -319,6 +319,13 @@
     <string name="settings_status_expired">Термін дії минув</string>
     <string name="settings_status_disabled">Вимкнено</string>
     <string name="settings_status_unknown">Невідомо</string>
+    <string name="settings_provider_connection_online">У мережі</string>
+    <string name="settings_provider_connection_unavailable">Недоступний</string>
+    <string name="settings_provider_connection_checking">Перевірка…</string>
+    <string name="settings_provider_connection_check_now">Перевірити зараз</string>
+    <string name="settings_provider_connection_last_checked">Остання перевірка</string>
+    <string name="settings_provider_connection_authentication_required">Потрібен вхід</string>
+    <string name="settings_provider_connection_unknown">Невідомо</string>
     <string name="settings_select_level">Виберіть рівень захисту</string>
     <string name="settings_level_off_desc">ВИМК. - Без обмежень</string>
     <string name="settings_level_off_subtitle">Дорослий контент відображається скрізь.</string>
@@ -947,4 +954,31 @@
     <string name="settings_sports_custom_definition_file_error">Не вдалося завантажити цей файл JSON</string>
     <string name="settings_experimental_badge">Експериментально</string>
     <string name="settings_sync_index_progress">%1$s · %2$s</string>
+    <string name="settings_refresh_rate_matching">Узгоджувати частоту з відеовмістом</string>
+    <string name="settings_refresh_rate_matching_description">Узгоджує частоту оновлення екрана з відео для плавнішого руху. Потрібна підтримка екрана; під час перемикання екран може ненадовго згаснути.</string>
+    <string name="settings_epg_phone_qr_start">Показати QR-код</string>
+    <string name="settings_epg_phone_qr_stop">Зупинити парування</string>
+    <string name="settings_epg_phone_qr_warning">Безпека: Під час сполучення дані для входу передаються локальною мережею без шифрування. Використовуйте лише довірену приватну мережу Wi-Fi.</string>
+    <string name="settings_epg_phone_qr_complete">Додано</string>
+    <string name="settings_epg_phone_qr_error">Помилка</string>
+    <string name="settings_backup_export_sections">Виберіть розділи для експорту</string>
+    <string name="settings_m3u_catchup_query_format">Формат запиту для відтворення архіву</string>
+    <string name="settings_m3u_catchup_query_format_subtitle">Використовується для каналів M3U без власного джерела архіву. Залиште поле порожнім, щоб вимкнути цей резервний формат. Приклад: ?utc={utc}</string>
+    <string name="settings_m3u_catchup_query_format_disabled">Вимкнено</string>
+    <string name="trakt_browser_sign_in">Увійти через браузер</string>
+    <string name="trakt_phone_sign_in">Підтвердити на іншому пристрої</string>
+    <string name="trakt_device_instructions">Відскануйте QR-код або відкрийте %1$s на телефоні. Введіть код нижче та дозвольте доступ. Цей екран підключиться автоматично. Якщо термін дії коду мине, скасуйте спробу та повторіть її.</string>
+    <string name="settings_text_size">Розмір тексту</string>
+    <string name="settings_text_size_default">Типовий (100%)</string>
+    <string name="settings_text_size_system">Як на пристрої</string>
+    <string name="settings_text_size_custom">Власний розмір</string>
+    <string name="settings_privacy_policy">Політика конфіденційності</string>
+    <string name="settings_category_reorder_channels">Сортувати канали</string>
+    <string name="settings_category_sort_manual">Вручну</string>
+    <string name="settings_category_reorder_categories">Змінити порядок категорій</string>
+    <string name="settings_default_live_channel_order">Типовий порядок каналів</string>
+    <string name="settings_live_order_save_failed">Не вдалося зберегти порядок каналів. Спробуйте ще раз.</string>
+    <string name="settings_live_order_recent">Нещодавно переглянуті</string>
+    <string name="settings_live_order_most">Найчастіше переглянуті</string>
+    <string name="settings_live_order_usage_help">Перегляд враховується після 10 секунд відтворення. Найчастіше переглянуті підсумовує час відтворення за останні 30 днів.</string>
 </resources>

@@ -32,6 +32,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +49,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalUriHandler
+import com.streamvault.domain.model.stremio.stremioConfigureUrl
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -72,6 +75,8 @@ import androidx.tv.material3.Border
 import androidx.compose.foundation.BorderStroke
 import com.streamvault.core.ui.interaction.TvClickableSurface
 import com.streamvault.core.ui.components.shell.ExtensionsSectionTabs
+import com.streamvault.core.ui.components.PhoneAddQrPanel
+import com.streamvault.domain.phone.PhoneAddKind
 import com.streamvault.domain.model.stremio.StremioMetaPreview
 import com.streamvault.domain.model.stremio.StremioPlaybackHistory
 import com.streamvault.domain.model.stremio.StremioResourceKind
@@ -93,7 +98,27 @@ fun AddonsScreen(
     onOpenBrowse: () -> Unit = {},
     viewModel: AddonsViewModel = hiltViewModel()
 ) {
+    var showAccount by remember { mutableStateOf(false) }
+    if (showAccount) {
+        scaffold(AppDestination.Addons,stringResource(R.string.stremio_account),null,true,false,true) {
+            StremioAccountContent(onBack={ showAccount=false })
+        }
+        return
+    }
+    var showDirectory by remember { mutableStateOf(false) }
+    if (showDirectory) {
+        scaffold(AppDestination.Addons, stringResource(R.string.stremio_discover), null, true, false, true) {
+            StremioDirectoryContent(onBack = { showDirectory = false }, onInstall = { url ->
+                showDirectory = false
+                viewModel.showInstallDialog()
+                viewModel.updateInstallUrl(url)
+            })
+        }
+        return
+    }
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val phoneAddState by viewModel.phoneAddState.collectAsStateWithLifecycle()
+    DisposableEffect(Unit) { onDispose { viewModel.stopPhoneAdd() } }
     LifecycleEventEffect(Lifecycle.Event.ON_START) {
         viewModel.refreshStaleManifests()
     }
@@ -156,12 +181,31 @@ fun AddonsScreen(
                     if (selectedIndex == 0) onNavigateToPlugins()
                 }
             )
+            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                TvButton(onClick = { showDirectory = true }) { Text(stringResource(R.string.stremio_discover)) }
+                TvButton(onClick = { showAccount = true }) { Text(stringResource(R.string.stremio_account)) }
+            }
             state.errorMessage?.let { message ->
                 MessageBanner(message = message, onClick = viewModel::consumeError)
             }
             state.statusMessageRes?.let { messageRes ->
                 MessageBanner(message = stringResource(messageRes), onClick = viewModel::consumeStatusMessage)
             }
+            PhoneAddQrPanel(
+                url = phoneAddState.url.takeIf { phoneAddState.kind == PhoneAddKind.STREMIO },
+                title = stringResource(R.string.stremio_install_title),
+                description = stringResource(R.string.stremio_phone_qr_warning),
+                status = when {
+                    phoneAddState.kind != PhoneAddKind.STREMIO -> null
+                    phoneAddState.completed -> stringResource(R.string.stremio_phone_qr_complete)
+                    phoneAddState.error -> stringResource(R.string.stremio_phone_qr_error)
+                    else -> null
+                },
+                startLabel = stringResource(R.string.stremio_phone_qr_start),
+                stopLabel = stringResource(R.string.stremio_phone_qr_stop),
+                onStart = viewModel::startPhoneAdd,
+                onStop = viewModel::stopPhoneAdd,
+            )
             when {
                 state.loading && state.addons.isEmpty() -> Box(
                     modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -366,6 +410,8 @@ private fun AddonCard(
     onRefresh: () -> Unit,
     onRemove: () -> Unit
 ) {
+    val uriHandler = LocalUriHandler.current
+    var openFailed by remember { mutableStateOf(false) }
     val addon = entry.addon
     val manifest = entry.manifest
     val hasStreams = manifest?.resources?.any { it.kind == StremioResourceKind.STREAM } == true
@@ -425,6 +471,23 @@ private fun AddonCard(
             )
         }
         if (expanded) {
+            if (openFailed) Text(stringResource(R.string.stremio_error_generic))
+            if (manifest?.behaviorHints?.configurable == true) {
+                TvButton(onClick = {
+                    val url = stremioConfigureUrl(addon.installUrl)
+                    openFailed = url == null || runCatching { uriHandler.openUri(url) }.isFailure
+                }) { Text(stringResource(R.string.stremio_configure)) }
+            }
+            if (manifest?.resources?.any { it.kind in setOf(StremioResourceKind.PLAYER, StremioResourceKind.LIBRARY) } == true) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.stremio_activity), modifier = Modifier.weight(1f))
+                    Switch(
+                        checked = addon.catalogSettings["__activity_events"] == true,
+                        onCheckedChange = { onCatalogEnabledChange("__activity_events", it) },
+                        enabled = !busy
+                    )
+                }
+            }
             Text(
                 text = stringResource(R.string.stremio_version_and_server_format,
                     addon.version,

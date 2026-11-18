@@ -50,6 +50,7 @@ import com.streamvault.core.ui.design.BrowseColors.TextTertiary as OnSurfaceDim
 import androidx.compose.foundation.BorderStroke
 import com.streamvault.feature.catalog.R
 import com.streamvault.core.ui.components.SearchInput
+import com.streamvault.domain.util.SearchTextNormalizer
 import com.streamvault.feature.catalog.presentation.components.SelectionChip
 import com.streamvault.feature.catalog.presentation.components.SelectionChipRow
 import com.streamvault.core.ui.components.dialogs.PremiumDialog
@@ -83,7 +84,8 @@ fun VodSectionHeader(
 fun VodActionChipRow(
     actions: List<VodActionChip>,
     selectedKey: String? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    firstActionFocusRequester: FocusRequester? = null
 ) {
     ChipRowSection(
         chips = actions.map { action ->
@@ -100,7 +102,8 @@ fun VodActionChipRow(
         chipHorizontalPadding = 14,
         supportingTextStyle = MaterialTheme.typography.labelSmall,
         supportingTextMaxLines = 1,
-        focusedContainerBoostWhenSelected = true
+        focusedContainerBoostWhenSelected = true,
+        firstItemFocusRequester = firstActionFocusRequester
     )
 }
 
@@ -199,7 +202,10 @@ fun VodCategoryPickerDialog(
     val filteredCategories = remember(categories, query) {
         val normalized = query.trim()
         if (normalized.isBlank()) categories
-        else categories.filter { it.name.contains(normalized, ignoreCase = true) }
+        else {
+            val foldedQuery = SearchTextNormalizer.normalize(normalized)
+            categories.filter { SearchTextNormalizer.normalize(it.name).contains(foldedQuery) }
+        }
     }
 
     PremiumDialog(

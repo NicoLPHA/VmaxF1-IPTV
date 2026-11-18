@@ -317,6 +317,13 @@
     <string name="settings_status_expired">Vanhentunut</string>
     <string name="settings_status_disabled">Pois käytöstä</string>
     <string name="settings_status_unknown">Tuntematon</string>
+    <string name="settings_provider_connection_online">Verkossa</string>
+    <string name="settings_provider_connection_unavailable">Ei saatavilla</string>
+    <string name="settings_provider_connection_checking">Tarkistetaan…</string>
+    <string name="settings_provider_connection_check_now">Tarkista nyt</string>
+    <string name="settings_provider_connection_last_checked">Viimeksi tarkistettu</string>
+    <string name="settings_provider_connection_authentication_required">Kirjautuminen vaaditaan</string>
+    <string name="settings_provider_connection_unknown">Tuntematon</string>
     <string name="settings_select_level">Valitse Suojaustaso</string>
     <string name="settings_level_off_desc">OFF - Ei rajoituksia</string>
     <string name="settings_level_off_subtitle">Aikuissisältö näkyy kaikkialla.</string>
@@ -941,4 +948,31 @@
     <string name="settings_sports_custom_definition_file_error">Tätä JSON-tiedostoa ei voitu ladata</string>
     <string name="settings_experimental_badge">Kokeellinen</string>
     <string name="settings_sync_index_progress">%1$s · %2$s</string>
+    <string name="settings_refresh_rate_matching">Mukauta sisällön kuvataajuuteen</string>
+    <string name="settings_refresh_rate_matching_description">Mukauttaa näytön virkistystaajuuden videoon liikkeen sulavoittamiseksi. Edellyttää näytön tukea; näyttö voi pimentyä hetkeksi vaihdon aikana.</string>
+    <string name="settings_epg_phone_qr_start">Näytä QR-koodi</string>
+    <string name="settings_epg_phone_qr_stop">Lopeta pariliitos</string>
+    <string name="settings_epg_phone_qr_warning">Tietoturva: Pariliitos lähettää kirjautumistiedot salaamattomina lähiverkkosi kautta. Käytä vain luotettua yksityistä Wi-Fi-verkkoa.</string>
+    <string name="settings_epg_phone_qr_complete">Lisätty</string>
+    <string name="settings_epg_phone_qr_error">Virhe</string>
+    <string name="settings_backup_export_sections">Valitse vietävät osiot</string>
+    <string name="settings_m3u_catchup_query_format">Catch-up-kyselyn muoto</string>
+    <string name="settings_m3u_catchup_query_format_subtitle">Käytetään M3U-kanaville, joilla ei ole omaa catch-up-lähdettä. Poista varamuoto käytöstä jättämällä kenttä tyhjäksi. Esimerkki: ?utc={utc}</string>
+    <string name="settings_m3u_catchup_query_format_disabled">Ei käytössä</string>
+    <string name="trakt_browser_sign_in">Kirjaudu selaimella</string>
+    <string name="trakt_phone_sign_in">Hyväksy toisella laitteella</string>
+    <string name="trakt_device_instructions">Skannaa QR-koodi tai avaa %1$s puhelimellasi. Kirjoita alla oleva koodi ja hyväksy käyttöoikeus. Tämä näkymä yhdistyy automaattisesti. Jos koodi vanhenee, peruuta ja yritä uudelleen.</string>
+    <string name="settings_text_size">Tekstin koko</string>
+    <string name="settings_text_size_default">Oletus (100%)</string>
+    <string name="settings_text_size_system">Laitteen asetuksen mukaan</string>
+    <string name="settings_text_size_custom">Mukautettu</string>
+    <string name="settings_privacy_policy">Tietosuojakäytäntö</string>
+    <string name="settings_category_reorder_channels">Järjestä kanavat uudelleen</string>
+    <string name="settings_category_sort_manual">Manuaalinen</string>
+    <string name="settings_category_reorder_categories">Järjestä kategoriat</string>
+    <string name="settings_default_live_channel_order">Kanavien oletusjärjestys</string>
+    <string name="settings_live_order_save_failed">Kanavajärjestystä ei voitu tallentaa. Yritä uudelleen.</string>
+    <string name="settings_live_order_recent">Viimeksi katsotut</string>
+    <string name="settings_live_order_most">Katsotuimmat</string>
+    <string name="settings_live_order_usage_help">Katselu lasketaan 10 sekunnin toiston jälkeen. Katsotuimmat laskee yhteen viimeisten 30 päivän toistoajan.</string>
 </resources>

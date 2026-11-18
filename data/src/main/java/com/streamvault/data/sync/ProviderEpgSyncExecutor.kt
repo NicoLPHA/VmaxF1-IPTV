@@ -171,13 +171,15 @@ internal class ProviderEpgSyncExecutor(
                     }
                     val epgCount = programDao.countByProvider(provider.id)
                     if (epgCount > 0) {
-                        syncMetadataRepository.updateMetadata(
-                            (syncMetadataRepository.getMetadata(provider.id) ?: SyncMetadata(provider.id)).copy(
-                                lastEpgSync = now,
-                                lastEpgSuccess = now,
-                                epgCount = epgCount
+                        transactionRunner.inTransaction {
+                            syncMetadataRepository.updateMetadata(
+                                (syncMetadataRepository.getMetadata(provider.id) ?: SyncMetadata(provider.id)).copy(
+                                    lastEpgSync = now,
+                                    lastEpgSuccess = now,
+                                    epgCount = epgCount
+                                )
                             )
-                        )
+                        }
                     } else {
                         warnings.add("Portal XMLTV imported zero programs; using the Stalker portal guide instead.")
                         shouldUseNativeGuide = true
@@ -231,6 +233,7 @@ internal class ProviderEpgSyncExecutor(
         val bulkCoveredChannelKeys = linkedSetOf<String>()
         var importedProgramCount = 0
         var providerRateLimited = false
+        var bulkGuideFailed = false
         var bulkEpgReturnedEmpty = false
 
         suspend fun flushPrograms() {
@@ -279,13 +282,19 @@ internal class ProviderEpgSyncExecutor(
                 }
             }
         }.onFailure { error ->
+            bulkGuideFailed = true
             providerRateLimited = error.hasStalkerRateLimit()
             Log.d(TAG, "Bulk Stalker portal EPG fetch unavailable for provider ${provider.id}", error)
         }
 
         val uncoveredGuideRequests = guideRequests.filterNot { it.channelKey in bulkCoveredChannelKeys }
-        val perChannelGuideWindowed = uncoveredGuideRequests.size > STALKER_PER_CHANNEL_EPG_REQUESTS_PER_RUN
-        val fallbackGuideRequests = if (providerRateLimited) {
+        // Bulk coverage avoids per-channel crawling of intentionally omitted channels.
+        // A failed bulk response remains incomplete and is retried by its owning worker.
+        val bulkGuideUsable = bulkCoveredChannelKeys.isNotEmpty()
+        // Incremental rows survive a broken response, but they do not establish a complete guide.
+        val bulkGuideIncomplete = bulkGuideFailed && bulkGuideUsable
+        val perChannelGuideWindowed = !bulkGuideUsable && uncoveredGuideRequests.size > STALKER_PER_CHANNEL_EPG_REQUESTS_PER_RUN
+        val fallbackGuideRequests = if (providerRateLimited || bulkGuideUsable) {
             emptyList()
         } else if (perChannelGuideWindowed) {
             val windowCount = (uncoveredGuideRequests.size + STALKER_PER_CHANNEL_EPG_REQUESTS_PER_RUN - 1) /
@@ -379,14 +388,16 @@ internal class ProviderEpgSyncExecutor(
             api.recordEpgCapability(supported = true)
         }
         val guideLooksHealthy = epgCount >= STALKER_MIN_HEALTHY_EPG_PROGRAMS || previousProgramCount == 0
-        val existingMetadata = syncMetadataRepository.getMetadata(provider.id) ?: SyncMetadata(provider.id)
-        syncMetadataRepository.updateMetadata(
-            existingMetadata.copy(
-                lastEpgSync = now,
-                lastEpgSuccess = if (guideLooksHealthy) now else existingMetadata.lastEpgSuccess,
-                epgCount = epgCount
+        transactionRunner.inTransaction {
+            val existingMetadata = syncMetadataRepository.getMetadata(provider.id) ?: SyncMetadata(provider.id)
+            syncMetadataRepository.updateMetadata(
+                existingMetadata.copy(
+                    lastEpgSync = now,
+                    lastEpgSuccess = if (guideLooksHealthy && !bulkGuideIncomplete) now else existingMetadata.lastEpgSuccess,
+                    epgCount = epgCount
+                )
             )
-        )
+        }
 
         val warnings = mutableListOf<String>()
         if (providerRateLimited) {
@@ -404,7 +415,7 @@ internal class ProviderEpgSyncExecutor(
                 "Stalker portal guide imported $epgCount programs, but ${failedChannels.size} channels failed (${summarizeChannelNames(failedChannels)})."
             )
         }
-        if (!guideLooksHealthy && previousProgramCount >= STALKER_MIN_HEALTHY_EPG_PROGRAMS) {
+        if (bulkGuideIncomplete || (!guideLooksHealthy && previousProgramCount >= STALKER_MIN_HEALTHY_EPG_PROGRAMS)) {
             warnings.add(
                 "Stalker portal guide import looked incomplete ($importedProgramCount programs across ${replacedChannelKeys.size} channels); preserved untouched prior guide data for the rest."
             )
@@ -565,10 +576,12 @@ internal class ProviderEpgSyncExecutor(
             }
         }
         if (provider.guideSourcePolicy == GuideSourcePolicy.EXTERNAL_ONLY && warnings.isEmpty() && !hasRetryableFailure) {
-            val current = syncMetadataRepository.getMetadata(provider.id) ?: metadata
-            syncMetadataRepository.updateMetadata(current.copy(
-                lastEpgSync = now, lastEpgSuccess = now, epgCount = programDao.countByProvider(provider.id)
-            ))
+            transactionRunner.inTransaction {
+                val current = syncMetadataRepository.getMetadata(provider.id) ?: metadata
+                syncMetadataRepository.updateMetadata(current.copy(
+                    lastEpgSync = now, lastEpgSuccess = now, epgCount = programDao.countByProvider(provider.id)
+                ))
+            }
         }
         return ProviderGuideSyncResult(warnings, hasRetryableFailure)
     }

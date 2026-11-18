@@ -234,7 +234,7 @@ abstract class ProviderWorkflowDao {
               SELECT 1 FROM provider_workflows workflow
               WHERE workflow.provider_id = :providerId
                 AND workflow.generation = :generation
-                AND workflow.current_phase = :phase
+                AND (workflow.current_phase = :phase OR workflow.current_phase IS NULL)
                 AND (
                     workflow.lease_token IS NULL
                     OR workflow.lease_expires_at IS NULL
@@ -598,6 +598,18 @@ abstract class ProviderWorkflowDao {
             null,
             null,
             now
+        ) == 1
+    }
+
+    @Transaction
+    open suspend fun defer(lease: ProviderWorkflowLease, now: Long): Boolean {
+        if (ownsLease(lease.providerId, lease.generation, lease.phase, lease.token) != 1) return false
+        check(finishPhase(
+            lease.providerId, lease.generation, lease.phase, ProviderWorkflowPhaseState.PENDING,
+            getCheckpoint(lease.providerId, lease.generation, lease.phase), null, null, now
+        ) == 1)
+        return finishWorkflowOwnership(
+            lease.providerId, lease.generation, lease.token, ProviderWorkflowState.PENDING, null, null, now
         ) == 1
     }
 

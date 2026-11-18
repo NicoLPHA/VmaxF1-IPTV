@@ -1,5 +1,7 @@
 package com.streamvault.data.sync
 
+import com.streamvault.data.BuildConfig
+
 import android.content.Context
 import android.util.Log
 import com.streamvault.data.local.DatabaseTransactionRunner
@@ -40,6 +42,7 @@ import com.streamvault.data.remote.stalker.StalkerApiService
 import com.streamvault.data.remote.stalker.StalkerApiError
 import com.streamvault.data.remote.stalker.StalkerPlaybackMode
 import com.streamvault.data.remote.stalker.StalkerProvider
+import com.streamvault.data.remote.stalker.StalkerAdvancedOptionsCodec
 import com.streamvault.data.remote.stalker.StalkerVodCatalogItem
 import com.streamvault.data.remote.stalker.StalkerRemoteIdentityResolver
 import com.streamvault.data.remote.stalker.StalkerRequestCoordinator
@@ -228,7 +231,8 @@ class SyncManager @Inject constructor(
     private val syncProviderSnapshotAdapter = SyncProviderSnapshotAdapter(providerSnapshotRepository)
     private val syncStatusPublicationCoordinator = SyncStatusPublicationCoordinator(
         syncMetadataRepository = syncMetadataRepository,
-        syncProgressBus = syncProgressBus
+        syncProgressBus = syncProgressBus,
+        transactionRunner = transactionRunner
     )
     private val syncErrorSanitizer = SyncErrorSanitizer()
     private val xtreamAdaptiveSyncPolicy = XtreamAdaptiveSyncPolicy()
@@ -280,7 +284,9 @@ class SyncManager @Inject constructor(
                 )
             },
             scheduleBackgroundEpg = providerSyncWorkScheduler::scheduleBackgroundEpg,
-            log = { message -> Log.i(TAG, message) }
+            log = { message -> Log.i(TAG, message) },
+            guideRowCount = programDao::countByProvider,
+            recoverBackgroundEpg = { providerSyncWorkScheduler.scheduleBackgroundEpg(it, force = true) }
         )
     }
     private val stalkerIncrementalIndexExecutor by lazy {
@@ -295,6 +301,19 @@ class SyncManager @Inject constructor(
                     getJob = { providerId, contentType -> stalkerIndexJobStore.get(providerId, contentType) },
                     getHydration = stalkerIndexCheckpointStore::getHydrationSnapshot,
                     currentIndexedRowCount = ::currentStalkerIndexedRowCount,
+                    categoriesWithLocalRows = { providerId, contentType ->
+                        val counts = mutableMapOf<Long, Int>()
+                        if (contentType == ContentType.MOVIE) {
+                            movieDao.getCategoryCounts(providerId).first().forEach { count ->
+                                counts[count.categoryId] = (counts[count.categoryId] ?: 0) + count.item_count
+                            }
+                        } else if (contentType == ContentType.SERIES) {
+                            seriesDao.getCategoryCounts(providerId).first().forEach { count ->
+                                counts[count.categoryId] = (counts[count.categoryId] ?: 0) + count.item_count
+                            }
+                        }
+                        counts
+                    },
                     pruneStaleRows = { providerId, contentType ->
                         inFencedStalkerIndexTransaction(providerId) {
                             xtreamContentIndexDao.pruneStaleLocalContentRows(providerId, contentType.name)
@@ -377,7 +396,13 @@ class SyncManager @Inject constructor(
                             catalogIndexJobStore.upsert(update)
                         }
                     },
-                    log = { message -> Log.i(TAG, message) }
+                    log = { message -> Log.i(TAG, message) },
+                    commitCatalogPage = ::commitStalkerCatalogPage,
+                    preserveCategoryRows = { providerId, type, categoryId ->
+                        inFencedStalkerIndexTransaction(providerId) {
+                            xtreamContentIndexDao.markCategoryRowsFresh(providerId, type.name, categoryId)
+                        }
+                    }
                 )
             )
         )
@@ -386,6 +411,18 @@ class SyncManager @Inject constructor(
         XtreamIncrementalIndexExecutor(
             operations = CallbackXtreamIncrementalIndexOperations(
                 XtreamIncrementalIndexCallbacks(
+                    beginSnapshot = { providerId, type ->
+                        transactionRunner.inTransaction {
+                            providerWorkflowCommitFence.assertCanCommit(providerId)
+                            xtreamContentIndexDao.beginSnapshot(providerId, type.name)
+                        }
+                    },
+                    finishSnapshot = { providerId, type ->
+                        transactionRunner.inTransaction {
+                            providerWorkflowCommitFence.assertCanCommit(providerId)
+                            xtreamContentIndexDao.pruneCompletedSnapshot(providerId, type.name)
+                        }
+                    },
                     getCategories = { providerId, contentType ->
                         categoryDao.getByProviderAndTypeSync(providerId, contentType.name)
                     },
@@ -686,6 +723,17 @@ class SyncManager @Inject constructor(
             sanitizeThrowableMessage = ::sanitizeThrowableMessage,
             requiredHiddenCategoryIds = { providerId, type ->
                 pendingBackupRestoreCoordinator?.requiredHiddenCategoryIds(providerId, type).orEmpty()
+            },
+            prepareVodCatalog = { provider, fresh, sections, onProgress ->
+                coroutineScope {
+                    sections.map { type -> async {
+                        withStalkerIndexSectionLock(provider.id, type) {
+                            stalkerIncrementalIndexExecutor.prepareCatalog(
+                                provider, createStalkerSyncProvider(provider), type, fresh, onProgress
+                            )
+                        }
+                    } }.awaitAll()
+                }
             }
         )
     }
@@ -809,7 +857,17 @@ class SyncManager @Inject constructor(
             stageChannelItems = { id, items, seen, categories, session ->
                 catalogStager.stageChannelItems(id, items, seen, categories, session, useLiveAdmissionCount = true)
             },
-            emitProgress = ::emitProviderProgress
+            emitProgress = ::emitProviderProgress,
+            beforeBulkLiveBatch = { providerId ->
+                if (kotlin.coroutines.coroutineContext[ProviderWorkflowExecutionContext]?.lease?.phase ==
+                    com.streamvault.data.local.entity.ProviderWorkflowPhase.PRIMARY_CATALOG &&
+                    AutomaticSyncExecution.automatic.get() == true &&
+                    shouldYieldXtreamLiveBatch(true,
+                        preferencesRepository.automaticSyncConfiguration.first().forProvider(providerId).deferWhileBusy,
+                        com.streamvault.domain.sync.AutomaticSyncActivity.hasPlayback)) {
+                    throw XtreamLivePlaybackDeferredException()
+                }
+            }
         )
     }
 
@@ -876,11 +934,13 @@ class SyncManager @Inject constructor(
         runCatching { providerSyncWorkScheduler.cancelStalkerIndex(providerId) }
             .onFailure { error -> Log.w(TAG, "Failed to cancel Stalker index work: ${sanitizeThrowableMessage(error)}") }
         withProviderLock(providerId) {
-            resetState(providerId)
-            stalkerReadinessTracker.clear(providerId)
-            xtreamAdaptiveSyncPolicy.forgetProvider(providerId)
-            syncCatalogStore.clearProviderStaging(providerId)
-            epgRepository.onProviderDeleted(providerId)
+            providerWorkLocks.withStalkerGuideLock(providerId) {
+                resetState(providerId)
+                stalkerReadinessTracker.clear(providerId)
+                xtreamAdaptiveSyncPolicy.forgetProvider(providerId)
+                syncCatalogStore.clearProviderStaging(providerId)
+                epgRepository.onProviderDeleted(providerId)
+            }
         }
         providerSyncLocks.forgetProvider(providerId)
         providerWorkLocks.forgetProvider(providerId)
@@ -893,7 +953,7 @@ class SyncManager @Inject constructor(
     override fun scheduleAutomaticSyncCheck() { ProviderSyncWorker.enqueueForegroundCheck(applicationContext) }
 
     override fun scheduleManualEpgSync(providerId: Long) {
-        providerSyncWorkScheduler.scheduleBackgroundEpg(providerId, force = true)
+        providerSyncWorkScheduler.scheduleManualEpg(providerId)
     }
 
     override fun scheduleBackgroundEpgSync(providerId: Long) {
@@ -982,10 +1042,9 @@ class SyncManager @Inject constructor(
         section: ContentType,
         categoryId: Long
     ) {
-        // Interactive repositories hydrate the requested category directly. Retained as a
-        // source-compatible no-op while callers migrate to the request coordinator.
         if (providerId <= 0L || categoryId == Long.MIN_VALUE) return
         if (section != ContentType.MOVIE && section != ContentType.SERIES) return
+        StalkerCatalogPriority.select(providerId, section, categoryId)
     }
 
     override suspend fun syncEpg(
@@ -996,10 +1055,15 @@ class SyncManager @Inject constructor(
         val providerEntity = providerDao.getById(providerId)
             ?: return com.streamvault.domain.model.Result.error("Provider $providerId not found")
 
-        return withProviderLock(providerId) {
+        val sync: suspend () -> Result<Unit> = {
             val freshProviderEntity = providerDao.getById(providerId)
-                ?: return@withProviderLock com.streamvault.domain.model.Result.error("Provider $providerId not found")
-            syncEpgLocked(freshProviderEntity, force, onProgress)
+            if (freshProviderEntity == null) Result.error("Provider $providerId not found")
+            else syncEpgLocked(freshProviderEntity, force, onProgress)
+        }
+        return if (providerEntity.type == ProviderType.STALKER_PORTAL) {
+            providerWorkLocks.withStalkerGuideLock(providerId, sync)
+        } else {
+            withProviderLock(providerId, sync)
         }
     }
 
@@ -1071,6 +1135,14 @@ class SyncManager @Inject constructor(
             )
             com.streamvault.domain.model.Result.success(Unit)
         } catch (e: CancellationException) {
+            withContext(NonCancellable) {
+                updateXtreamEpgJobState(
+                    provider = provider,
+                    state = "FAILED_RETRYABLE",
+                    now = System.currentTimeMillis(),
+                    lastAttemptAt = startedAt
+                )
+            }
             resetState(providerId)
             throw e
         } catch (e: Exception) {
@@ -1225,6 +1297,62 @@ class SyncManager @Inject constructor(
 
     override suspend fun resumePrimaryCatalog(providerId: Long, trackInitialLiveOnboarding: Boolean): Result<Unit> =
         syncProviderInternal(providerId, false, null, null, null, trackInitialLiveOnboarding, null, null, false, resumeOnly = true)
+
+    override suspend fun resumeStalkerBootstrap(providerId: Long): Result<Unit> {
+        val provider = loadCompatibilityProvider(providerId)
+            ?: return Result.error("Provider $providerId has no typed configuration")
+        if (provider.type != ProviderType.STALKER_PORTAL) {
+            return Result.error("Provider $providerId is not a Stalker portal")
+        }
+
+        if ((syncMetadataRepository.getMetadata(providerId)?.lastLiveSuccess ?: 0L) <= 0L) {
+            val live = syncSection(
+                providerId = providerId,
+                section = SyncRepairSection.LIVE
+            )
+            if (live is Result.Error) return live
+            if (live is Result.Loading) return Result.error("Stalker live bootstrap resume did not complete")
+            if ((syncMetadataRepository.getMetadata(providerId)?.lastLiveSuccess ?: 0L) <= 0L) {
+                return Result.error("Stalker live bootstrap resume did not complete")
+            }
+        }
+
+        withStalkerSummaryLock(providerId, ContentType.MOVIE) {
+            warmStalkerCategoryHeads(provider)
+        }
+
+        // Live is complete before the page-one VOD sweep. Start the full VOD walk only after
+        // these category heads are committed, so they are immediately usable and Live setup
+        // does not compete with the catalog crawl.
+        scheduleStalkerIndexSync(providerId, section = null, force = false)
+
+        when (provider.epgSyncMode) {
+            ProviderEpgSyncMode.UPFRONT,
+            ProviderEpgSyncMode.BACKGROUND -> scheduleBackgroundEpgSync(providerId)
+            ProviderEpgSyncMode.SKIP -> Unit
+        }
+        return Result.success(Unit)
+    }
+
+    /** Caller owns the provider lane; sections share wire admission but keep their own cursors. */
+    private suspend fun warmStalkerCategoryHeads(provider: Provider, sections: List<ContentType>? = null) {
+        val headSections = sections ?: if (provider.catalogLayout == CatalogLayout.UNIFIED_VOD) {
+            listOf(ContentType.MOVIE)
+        } else listOf(ContentType.MOVIE, ContentType.SERIES)
+        coroutineScope {
+            headSections.map { contentType -> async {
+                withStalkerIndexSectionLock(provider.id, contentType) {
+                    runSuspendCatching {
+                        stalkerIncrementalIndexExecutor.processCategoryHeads(
+                            provider, createStalkerSyncProvider(provider), contentType, null
+                        )
+                    }.exceptionOrNull()?.let { error ->
+                        Log.w(TAG, "Initial Stalker ${contentType.name} category heads failed for provider ${provider.id}: ${sanitizeThrowableMessage(error)}")
+                    }
+                }
+            } }.awaitAll()
+        }
+    }
 
     private suspend fun syncProviderInternal(
         providerId: Long,
@@ -1528,6 +1656,28 @@ class SyncManager @Inject constructor(
 
         val progressSession = beginProgressSession(providerId)
         publishSyncState(providerId, SyncState.Syncing("Retrying ${section.name}..."))
+        var epgAttemptAt = 0L
+        var epgHasRetryableFailure = false
+
+        suspend fun updateEpgJobState(
+            state: String,
+            now: Long,
+            indexedRows: Int? = null,
+            lastSuccessAt: Long? = null,
+            lastError: String? = null
+        ) {
+            if (section != SyncRepairSection.EPG) return
+            updateXtreamEpgJobState(
+                provider = provider,
+                state = state,
+                now = now,
+                indexedRows = indexedRows,
+                lastAttemptAt = epgAttemptAt.takeIf { it > 0L },
+                lastSuccessAt = lastSuccessAt,
+                lastError = lastError
+            )
+        }
+
         try {
             val persistedSnapshot = syncProviderSnapshotAdapter.getSnapshot(providerId)
                 ?: syncProviderSnapshotAdapter.toSnapshot(provider)
@@ -1542,17 +1692,24 @@ class SyncManager @Inject constructor(
                 persistedSnapshot
             }
             val sectionResult = withContext(Dispatchers.IO) {
+                if (section == SyncRepairSection.EPG) {
+                    epgAttemptAt = System.currentTimeMillis()
+                    updateEpgJobState("RUNNING", epgAttemptAt)
+                }
                 if (section == SyncRepairSection.EPG && !retryFailedCategoriesOnly) {
                     when (val guide = syncCoordinator.syncGuide(ProviderGuideSyncRequest(
                         snapshot = snapshot,
                         force = true,
-                        now = System.currentTimeMillis(),
+                        now = epgAttemptAt,
                         onProgress = onProgress
                     ))) {
-                        is CapabilityResolution.Available -> CapabilityResolution.Available(SyncOutcome(
-                            partial = guide.capability.hasRetryableFailure || guide.capability.warnings.isNotEmpty(),
-                            warnings = guide.capability.warnings
-                        ))
+                        is CapabilityResolution.Available -> {
+                            epgHasRetryableFailure = guide.capability.hasRetryableFailure
+                            CapabilityResolution.Available(SyncOutcome(
+                                partial = guide.capability.hasRetryableFailure || guide.capability.warnings.isNotEmpty(),
+                                warnings = guide.capability.warnings
+                            ))
+                        }
                         is CapabilityResolution.Unsupported -> guide
                         is CapabilityResolution.Restricted -> guide
                         is CapabilityResolution.ConfigurationError -> guide
@@ -1569,9 +1726,33 @@ class SyncManager @Inject constructor(
             }
             val outcome = when (sectionResult) {
                 is CapabilityResolution.Available -> sectionResult.capability
-                is CapabilityResolution.Unsupported -> return@lock failSectionResolution(providerId, sectionResult.reason)
-                is CapabilityResolution.Restricted -> return@lock failSectionResolution(providerId, sectionResult.reason)
-                is CapabilityResolution.ConfigurationError -> return@lock failSectionResolution(providerId, sectionResult.reason)
+                is CapabilityResolution.Unsupported -> {
+                    updateEpgJobState("FAILED_PERMANENT", System.currentTimeMillis(), lastError = sectionResult.reason)
+                    return@lock failSectionResolution(providerId, sectionResult.reason)
+                }
+                is CapabilityResolution.Restricted -> {
+                    updateEpgJobState("FAILED_PERMANENT", System.currentTimeMillis(), lastError = sectionResult.reason)
+                    return@lock failSectionResolution(providerId, sectionResult.reason)
+                }
+                is CapabilityResolution.ConfigurationError -> {
+                    updateEpgJobState("FAILED_PERMANENT", System.currentTimeMillis(), lastError = sectionResult.reason)
+                    return@lock failSectionResolution(providerId, sectionResult.reason)
+                }
+            }
+            if (section == SyncRepairSection.EPG) {
+                val finishedAt = System.currentTimeMillis()
+                val epgJobState = when {
+                    epgHasRetryableFailure -> "FAILED_RETRYABLE"
+                    outcome.warnings.isNotEmpty() -> "PARTIAL"
+                    else -> "SUCCESS"
+                }
+                updateEpgJobState(
+                    state = epgJobState,
+                    now = finishedAt,
+                    indexedRows = programDao.countByProvider(providerId),
+                    lastSuccessAt = finishedAt.takeIf { epgJobState == "SUCCESS" },
+                    lastError = outcome.warnings.takeIf { it.isNotEmpty() }?.joinToString("; ")
+                )
             }
             updateSyncStatusMetadata(
                 providerId = providerId,
@@ -1594,11 +1775,24 @@ class SyncManager @Inject constructor(
                 catalogChanged = outcome.activation == SyncActivation.ACTIVATED_CATALOG
             ))
         } catch (e: CancellationException) {
+            if (section == SyncRepairSection.EPG) {
+                withContext(NonCancellable) {
+                    updateEpgJobState("FAILED_RETRYABLE", System.currentTimeMillis())
+                }
+            }
             resetState(providerId)
             throw e
         } catch (e: Exception) {
             val safeMessage = syncErrorSanitizer.userMessage(e, "Retry failed")
             Log.e(TAG, "Section retry failed for provider $providerId [$section]: ${syncErrorSanitizer.throwableMessage(e)}")
+            if (section == SyncRepairSection.EPG) {
+                updateEpgJobState(
+                    state = if (isRetryableEpgException(e)) "FAILED_RETRYABLE" else "FAILED_PERMANENT",
+                    now = System.currentTimeMillis(),
+                    indexedRows = programDao.countByProvider(providerId),
+                    lastError = safeMessage
+                )
+            }
             updateSyncStatusMetadata(providerId = providerId, status = syncFailureStatus(provider, e))
             publishSyncState(providerId, SyncState.Error(safeMessage, e))
             com.streamvault.domain.model.Result.error(safeMessage, e)
@@ -1709,17 +1903,21 @@ class SyncManager @Inject constructor(
         section: ContentType?,
         force: Boolean,
         maxCategoriesPerSection: Int?,
-        onProgress: ((String) -> Unit)?
+        onProgress: ((String) -> Unit)?,
+        maxPagesPerSection: Int?,
+        categoryHeadsOnly: Boolean,
+        scheduleContinuation: Boolean
     ): com.streamvault.domain.model.Result<Unit> {
         return withStalkerSummaryLock(providerId, section) lock@{
-        val playbackDelayMillis = if (StalkerTrafficCoordinator.isPlaybackActive(providerId)) 2_000L else 0L
+        val playbackDelayMillis = if (StalkerTrafficCoordinator.shouldDeferIndexForPlayback(providerId)) 15 * 60_000L else 0L
         if (playbackDelayMillis > 0L) {
             Log.i(TAG, "Deferring Stalker catalog work for provider $providerId because playback is active.")
             scheduleStalkerIndexSync(
                 providerId = providerId,
                 section = null,
                 force = force,
-                initialDelaySeconds = ((playbackDelayMillis + 999L) / 1000L).coerceAtLeast(1L)
+                initialDelaySeconds = ((playbackDelayMillis + 999L) / 1000L).coerceAtLeast(1L),
+                appendSuccessor = true
             )
             return@lock com.streamvault.domain.model.Result.success(Unit)
         }
@@ -1737,71 +1935,70 @@ class SyncManager @Inject constructor(
             when { it.movies && !it.series -> ContentType.MOVIE; it.series && !it.movies -> ContentType.SERIES; else -> null }
         }
         val api = createStalkerSyncProvider(provider)
-        val decision = stalkerIndexContinuationCoordinator.chooseNextSection(
-            provider = provider,
-            api = api,
-            requestedSection = effectiveSection,
-            force = force,
-            now = System.currentTimeMillis()
-        )
-        val contentType = decision.contentType
-        if (contentType == null) {
-            Log.i(TAG, "Stalker catalog worker skipped provider $providerId: ${decision.reason}")
-            if (decision.retryDelaySeconds > 0L) {
-                scheduleStalkerIndexSync(
-                    providerId = providerId,
-                    section = null,
-                    force = false,
-                    initialDelaySeconds = decision.retryDelaySeconds,
-                    appendSuccessor = true
-                )
-            } else {
+            val candidates = (effectiveSection?.let { listOf(it) }
+                ?: listOf(ContentType.MOVIE, ContentType.SERIES)).filter { type ->
+                (type != ContentType.SERIES || provider.catalogLayout != CatalogLayout.UNIFIED_VOD) &&
+                    (automaticPolicy == null || if (type == ContentType.MOVIE) automaticPolicy.movies else automaticPolicy.series)
+            }
+            suspend fun process(type: ContentType): Throwable? =
+                withStalkerIndexSectionLock(provider.id, type) {
+                    val decision = stalkerIndexContinuationCoordinator.chooseNextSection(
+                        provider, api, type, force, System.currentTimeMillis())
+                    if (decision.contentType != type) return@withStalkerIndexSectionLock null
+                    runSuspendCatching {
+                        if (categoryHeadsOnly) stalkerIncrementalIndexExecutor.processCategoryHeads(provider, api, type, onProgress)
+                        else stalkerIncrementalIndexExecutor.processSummary(provider, api, type, Int.MAX_VALUE,
+                            onProgress, maxPages = maxPagesPerSection)
+                    }.exceptionOrNull()
+                }
+            val failures = executeStalkerCatalogSections(
+                sections = candidates,
+                order = StalkerAdvancedOptionsCodec.decode(provider.stalkerAdvancedOptionsJson).catalogLoadOrder,
+                headsOnly = categoryHeadsOnly,
+                isPending = { stalkerIndexContinuationCoordinator.isSectionPending(provider, api, it) },
+                process = ::process
+            )
+            if (scheduleContinuation) {
+                stalkerIndexContinuationCoordinator.scheduleNextSection(provider, api)
                 stalkerIndexContinuationCoordinator.scheduleEpgIfCatalogIdle(provider)
             }
-            return@lock com.streamvault.domain.model.Result.success(Unit)
+            return@lock (failures.firstOrNull()?.let {
+                Result.error(sanitizeThrowableMessage(it), it)
+            } ?: Result.success(Unit)).alsoApplyPendingRestore(providerId)
         }
-        Log.i(TAG, "Stalker catalog worker selected ${contentType.name} for provider $providerId: ${decision.reason}")
+    }
 
-        val warnings = mutableListOf<String>()
-        val failures = mutableListOf<Throwable>()
-        var sawRetryableFailure = false
-        val categoryLimit = maxCategoriesPerSection?.coerceAtLeast(1) ?: STALKER_INDEX_CATEGORY_SLICE_SIZE
-        val failure = runSuspendCatching {
-            stalkerIncrementalIndexExecutor.processSummary(
-                provider = provider,
-                api = api,
-                contentType = contentType,
-                maxCategories = categoryLimit,
-                onProgress = onProgress
-            )
-        }.exceptionOrNull()
-        if (failure != null) {
-            val failedAt = System.currentTimeMillis()
-            val state = StalkerIndexRecoveryPolicy.failureState(failure, ::sanitizeThrowableMessage)
-            upsertXtreamIndexJob(
-                providerId = providerId,
-                section = contentType.name,
-                state = state,
-                now = failedAt,
-                lastAttemptAt = failedAt,
-                lastError = sanitizeThrowableMessage(failure)
-            )
-            failures += failure
-            sawRetryableFailure = sawRetryableFailure || state != "FAILED_PERMANENT"
-            warnings += "${contentType.name.lowercase().replaceFirstChar { it.titlecase() }} indexing failed: ${sanitizeThrowableMessage(failure)}"
-        }
-
-        val result = if (warnings.isNotEmpty()) {
-            val message = warnings.joinToString("; ")
-            val cause = failures.firstOrNull()
-            val exception = if (sawRetryableFailure) IOException(message, cause) else IllegalStateException(message, cause)
-            com.streamvault.domain.model.Result.error(warnings.first(), exception)
-        } else {
-            stalkerIndexContinuationCoordinator.scheduleNextSection(provider, api)
-            stalkerIndexContinuationCoordinator.scheduleEpgIfCatalogIdle(provider)
-            com.streamvault.domain.model.Result.success(Unit)
-        }
-        result.alsoApplyPendingRestore(providerId)
+    private suspend fun commitStalkerCatalogPage(
+        provider: Provider,
+        categoryId: Long,
+        page: com.streamvault.data.remote.stalker.StalkerPagedResult<out Any>
+    ) {
+        if (provider.catalogLayout != CatalogLayout.UNIFIED_VOD) return
+        val items = page.items.filterIsInstance<StalkerVodCatalogItem>()
+        inFencedStalkerIndexTransaction(provider.id) {
+            val current = vodCategoryHydrationDao.get(provider.id, categoryId)
+            val entries = items.mapIndexed { index, entry ->
+                when (val item = entry.item) {
+                    is VodCatalogItem.MovieItem -> VodCatalogEntryEntity(provider.id, categoryId, entry.rawItemId,
+                        ContentType.MOVIE, item.movie.streamId, page.page, index)
+                    is VodCatalogItem.SeriesItem -> VodCatalogEntryEntity(provider.id, categoryId, entry.rawItemId,
+                        ContentType.SERIES, item.series.seriesId, page.page, index)
+                }
+            }
+            vodCatalogEntryDao.replacePage(provider.id, categoryId, page.page, entries)
+            // An interactive category request may have advanced while this page was in flight.
+            if ((current?.lastSuccessfulPage ?: 0) > page.page) return@inFencedStalkerIndexTransaction
+            vodCategoryHydrationDao.upsert(VodCategoryHydrationEntity(
+                providerId = provider.id, categoryId = categoryId,
+                lastLoadedPage = page.page, lastAttemptedPage = page.page, lastSuccessfulPage = page.page,
+                totalPages = page.totalPages, advertisedTotalItems = page.advertisedTotalItems,
+                advertisedTotalPages = page.advertisedTotalPages, pageSize = page.pageSize,
+                itemCount = vodCatalogEntryDao.countByCategory(provider.id, categoryId),
+                isComplete = page.isComplete && !page.isTruncated,
+                hasMovies = current?.hasMovies == true || items.any { it.item is VodCatalogItem.MovieItem },
+                hasSeries = current?.hasSeries == true || items.any { it.item is VodCatalogItem.SeriesItem },
+                lastHydratedAt = System.currentTimeMillis(), lastStatus = if (page.isTruncated) "TRUNCATED" else "SUCCESS"
+            ))
         }
     }
 
@@ -1815,12 +2012,12 @@ class SyncManager @Inject constructor(
     ): Result<com.streamvault.data.remote.stalker.StalkerPagedResult<out Any>> {
         suspend fun fetch(): Result<com.streamvault.data.remote.stalker.StalkerPagedResult<out Any>> {
             if (contentType == ContentType.MOVIE && provider.catalogLayout == CatalogLayout.UNIFIED_VOD) {
-                return api.getUnifiedVodPage(categoryId, page)
+                return if (BuildConfig.STALKER_ADAPTIVE_INDEXING) {
+                    api.getUnifiedVodPage(categoryId, page, sortBy = StalkerProvider.WILDCARD_INDEX_SORT)
+                } else api.getUnifiedVodPage(categoryId, page)
             }
             if (splitVod && contentType == ContentType.MOVIE) {
-                val seriesCategoryId = api.projectVodCategoryToSeries(categoryId)
-                    ?: return Result.error("Unable to resolve VOD-derived Series category")
-                return api.getSplitVodPage(categoryId, seriesCategoryId, page)
+                return api.getSplitVodPage(categoryId, page, sortBy = StalkerProvider.WILDCARD_INDEX_SORT)
             }
             return fetchStalkerSummaryPage(api, contentType, categoryId, page)
         }
@@ -1868,7 +2065,7 @@ class SyncManager @Inject constructor(
     ): Result<com.streamvault.data.remote.stalker.StalkerPagedResult<out Any>> {
         suspend fun fetch(): Result<com.streamvault.data.remote.stalker.StalkerPagedResult<out Any>> =
             if (contentType == ContentType.MOVIE && provider.catalogLayout == CatalogLayout.UNIFIED_VOD) {
-                api.getUnifiedVodPage(categoryId, page)
+                api.getUnifiedVodPageUsingItemCategories(categoryId, page)
             } else {
                 fetchStalkerWildcardSummaryPage(api, contentType, categoryId, page)
             }
@@ -1918,8 +2115,12 @@ class SyncManager @Inject constructor(
         categoryId: Long,
         page: Int
     ): Result<com.streamvault.data.remote.stalker.StalkerPagedResult<out Any>> = when (contentType) {
-        ContentType.MOVIE -> api.getVodStreamsPage(categoryId, page)
-        ContentType.SERIES -> api.getSeriesListPage(categoryId, page)
+        ContentType.MOVIE -> if (BuildConfig.STALKER_ADAPTIVE_INDEXING) {
+            api.getVodStreamsPage(categoryId, page, sortBy = StalkerProvider.WILDCARD_INDEX_SORT)
+        } else api.getVodStreamsPage(categoryId, page)
+        ContentType.SERIES -> if (BuildConfig.STALKER_ADAPTIVE_INDEXING) {
+            api.getNativeSeriesListPage(categoryId, page, sortBy = StalkerProvider.WILDCARD_INDEX_SORT)
+        } else api.getSeriesListPage(categoryId, page)
         else -> Result.error("Unsupported Stalker summary page section: $contentType")
     }
 
@@ -1930,7 +2131,7 @@ class SyncManager @Inject constructor(
         page: Int
     ): Result<com.streamvault.data.remote.stalker.StalkerPagedResult<out Any>> = when (contentType) {
         ContentType.MOVIE -> api.getVodStreamsPageUsingItemCategories(categoryId, page)
-        ContentType.SERIES -> api.getSeriesListPage(categoryId, page)
+        ContentType.SERIES -> api.getNativeSeriesListPageUsingItemCategories(categoryId, page)
         else -> Result.error("Unsupported Stalker wildcard summary page section: $contentType")
     }
 
@@ -2049,7 +2250,7 @@ class SyncManager @Inject constructor(
             val localId = existingByStreamId[movie.streamId]?.id ?: movie.id
             val row = movie.toXtreamIndexRow(providerId, localId, indexedAt)
             val existing = indexRowsBefore[row.remoteId]
-            existing == null || existing.copy(indexedAt = row.indexedAt) != row
+            existing == null || existing.indexedAt == 0L || existing.copy(indexedAt = row.indexedAt) != row
         }
         if (updatedMovies.isNotEmpty() || movieIndexChanged) {
             transactionRunner.inTransaction {
@@ -2071,7 +2272,7 @@ class SyncManager @Inject constructor(
                 }
                 val indexUpdates = indexRows.filter { row ->
                     val existing = indexRowsBefore[row.remoteId]
-                    existing == null || existing.copy(indexedAt = row.indexedAt) != row
+                    existing == null || existing.indexedAt == 0L || existing.copy(indexedAt = row.indexedAt) != row
                 }
                 if (indexUpdates.isNotEmpty()) xtreamContentIndexDao.upsertAll(indexUpdates)
             }
@@ -2110,7 +2311,7 @@ class SyncManager @Inject constructor(
             val localId = existingBySeriesId[item.seriesId]?.id ?: item.id
             val row = item.toXtreamIndexRow(providerId, localId, indexedAt)
             val existing = indexRowsBefore[row.remoteId]
-            existing == null || existing.copy(indexedAt = row.indexedAt) != row
+            existing == null || existing.indexedAt == 0L || existing.copy(indexedAt = row.indexedAt) != row
         }
         if (updatedSeries.isNotEmpty() || seriesIndexChanged) {
             transactionRunner.inTransaction {
@@ -2132,7 +2333,7 @@ class SyncManager @Inject constructor(
                 }
                 val indexUpdates = indexRows.filter { row ->
                     val existing = indexRowsBefore[row.remoteId]
-                    existing == null || existing.copy(indexedAt = row.indexedAt) != row
+                    existing == null || existing.indexedAt == 0L || existing.copy(indexedAt = row.indexedAt) != row
                 }
                 if (indexUpdates.isNotEmpty()) xtreamContentIndexDao.upsertAll(indexUpdates)
             }

@@ -5,6 +5,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import androidx.media3.common.C
 import androidx.media3.common.Format
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.exoplayer.ExoPlayer
@@ -20,15 +21,29 @@ import com.streamvault.domain.settings.PlaybackQualityPreferences
 import com.streamvault.domain.settings.ScopedPlaybackQualityPreference
 import com.streamvault.domain.settings.ResolvedPlaybackQualityPolicy
 import com.streamvault.domain.settings.evaluate
+import com.streamvault.player.DEVICE_SUBTITLE_TRACK_ID
+import com.streamvault.player.ONLINE_SUBTITLE_TRACK_ID
 import com.streamvault.player.PLAYER_TRACK_AUTO_ID
 import com.streamvault.player.PlayerTrack
+import com.streamvault.player.R
 import com.streamvault.player.SubtitleTrackSource
+import com.streamvault.player.STREMIO_SUBTITLE_TRACK_ID
 import com.streamvault.player.TrackType
 import java.util.Locale
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+
+private val MERGED_ID_PREFIX = Regex("^(?:\\d+:)*")
+
+internal fun externalSubtitleSourceOf(formatId: String?): SubtitleTrackSource? =
+    when (formatId?.replace(MERGED_ID_PREFIX, "")) {
+        ONLINE_SUBTITLE_TRACK_ID -> SubtitleTrackSource.ONLINE
+        DEVICE_SUBTITLE_TRACK_ID -> SubtitleTrackSource.DEVICE
+        STREMIO_SUBTITLE_TRACK_ID -> SubtitleTrackSource.STREMIO
+        else -> null
+    }
 
 class PlayerTrackController(
     private val context: Context
@@ -130,8 +145,10 @@ class PlayerTrackController(
 
         preferences.subtitle?.let { preference ->
             val selected = resolvePreferredPlayerTrack(preference, _availableSubtitleTracks.value)
+            val waitingForExternal = preference.externalSubtitleDownloadId != null &&
+                preference.trackId.isNullOrBlank()
             builder.clearOverridesOfType(C.TRACK_TYPE_TEXT)
-            if (preference.disabled || selected == null) {
+            if (preference.disabled || waitingForExternal || selected == null) {
                 builder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
                 _availableSubtitleTracks.update { tracks -> tracks.map { it.copy(isSelected = false) } }
             } else {
@@ -361,12 +378,24 @@ class PlayerTrackController(
             val isVideo = type == C.TRACK_TYPE_VIDEO
 
             if (isAudio || isText || isVideo) {
+                val closedCaptionIndices = if (isText) {
+                    (0 until group.length).filter { index ->
+                        isClosedCaptionFormat(group.mediaTrackGroup.getFormat(index))
+                    }
+                } else {
+                    emptyList()
+                }
                 for (index in 0 until group.length) {
                     val format = group.mediaTrackGroup.getFormat(index)
                     val id = playerTrackId(format, type, group.mediaTrackGroup.hashCode(), index)
+                    val captionNumber = if (isText) {
+                        closedCaptionNumber(closedCaptionIndices.indexOf(index), closedCaptionIndices.size)
+                    } else {
+                        null
+                    }
                     val track = PlayerTrack(
                         id = id,
-                        name = buildTrackName(format, type, index),
+                        name = buildTrackName(format, type, index, captionNumber),
                         language = format.language,
                         type = when {
                             isAudio -> TrackType.AUDIO
@@ -374,12 +403,8 @@ class PlayerTrackController(
                             else -> TrackType.VIDEO
                         },
                         isSelected = if (isVideo) selectedVideoTrackId == id else group.isTrackSelected(index),
-                        subtitleSource = when (format.id) {
-                            com.streamvault.player.ONLINE_SUBTITLE_TRACK_ID -> com.streamvault.player.SubtitleTrackSource.ONLINE
-                            com.streamvault.player.DEVICE_SUBTITLE_TRACK_ID -> com.streamvault.player.SubtitleTrackSource.DEVICE
-                            com.streamvault.player.STREMIO_SUBTITLE_TRACK_ID -> com.streamvault.player.SubtitleTrackSource.STREMIO
-                            else -> com.streamvault.player.SubtitleTrackSource.PROVIDER
-                        },
+                        subtitleSource = externalSubtitleSourceOf(format.id)
+                            ?: SubtitleTrackSource.PROVIDER,
                         videoHeight = format.height.takeIf { isVideo && it > 0 },
                         videoBitrateBps = format.bitrate.takeIf { isVideo && it > 0 }?.toLong(),
                     )
@@ -520,6 +545,9 @@ class PlayerTrackController(
 
     fun selectSubtitleTrack(player: ExoPlayer, trackId: String?) {
         if (trackId == null) {
+            vodTrackPreferences = (vodTrackPreferences ?: VodTrackPreferences()).copy(
+                subtitle = VodTrackPreference(disabled = true)
+            )
             player.trackSelectionParameters = player.trackSelectionParameters
                 .buildUpon()
                 .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
@@ -528,6 +556,21 @@ class PlayerTrackController(
             return
         }
         val override = findOverride(player.currentTracks, C.TRACK_TYPE_TEXT, trackId) ?: return
+        val selectedTrack = _availableSubtitleTracks.value.firstOrNull { it.id == trackId }
+        val currentPreferences = vodTrackPreferences ?: VodTrackPreferences()
+        val preservedDownloadId = currentPreferences.subtitle
+            ?.externalSubtitleDownloadId
+            ?.takeIf { selectedTrack?.subtitleSource == SubtitleTrackSource.ONLINE }
+        vodTrackPreferences = currentPreferences.copy(
+            subtitle = selectedTrack?.let { track ->
+                VodTrackPreference(
+                    trackId = track.id,
+                    language = track.language,
+                    label = track.name,
+                    externalSubtitleDownloadId = preservedDownloadId
+                )
+            } ?: VodTrackPreference(trackId = trackId, externalSubtitleDownloadId = preservedDownloadId)
+        )
         player.trackSelectionParameters = player.trackSelectionParameters
             .buildUpon()
             .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
@@ -553,8 +596,17 @@ class PlayerTrackController(
         _availableSubtitleTracks.update { tracks ->
             tracks.map { existing -> existing.copy(isSelected = existing.id == track.id) }
         }
-        vodTrackPreferences = (vodTrackPreferences ?: VodTrackPreferences()).copy(
-            subtitle = VodTrackPreference(trackId = track.id, language = track.language, label = track.name)
+        val currentPreferences = vodTrackPreferences ?: VodTrackPreferences()
+        val preservedDownloadId = currentPreferences.subtitle
+            ?.externalSubtitleDownloadId
+            ?.takeIf { source == SubtitleTrackSource.ONLINE }
+        vodTrackPreferences = currentPreferences.copy(
+            subtitle = VodTrackPreference(
+                trackId = track.id,
+                language = track.language,
+                label = track.name,
+                externalSubtitleDownloadId = preservedDownloadId
+            )
         )
     }
 
@@ -696,7 +748,7 @@ class PlayerTrackController(
         if (!evaluation.isEligible) selectVideoTrack(player, PLAYER_TRACK_AUTO_ID)
     }
 
-    private fun buildTrackName(format: Format, trackType: Int, index: Int): String {
+    private fun buildTrackName(format: Format, trackType: Int, index: Int, captionNumber: Int?): String {
         if (trackType == C.TRACK_TYPE_VIDEO) return buildVideoTrackName(format, index)
 
         val explicitLabel = format.label
@@ -726,9 +778,15 @@ class PlayerTrackController(
         }
 
         if (parts.isNotEmpty()) return parts.joinToString(" ")
+        val closedCaption = isClosedCaptionFormat(format)
         return when (trackType) {
             C.TRACK_TYPE_AUDIO -> "Audio ${index + 1}"
-            C.TRACK_TYPE_TEXT -> "Subtitle ${index + 1}"
+            C.TRACK_TYPE_TEXT -> when {
+                closedCaption && captionNumber != null ->
+                    context.getString(R.string.player_track_closed_captions_numbered, captionNumber)
+                closedCaption -> context.getString(R.string.player_track_closed_captions)
+                else -> "Subtitle ${index + 1}"
+            }
             else -> "Track ${index + 1}"
         }
     }
@@ -752,6 +810,18 @@ class PlayerTrackController(
             ?: parts.joinToString(" · ").ifBlank { "Quality ${index + 1}" }
     }
 }
+
+/**
+ * In-band CEA-608/708 captions are declared without a label or language, so the MIME type is the
+ * only signal that distinguishes them from an unnamed subtitle track.
+ */
+internal fun isClosedCaptionFormat(format: Format): Boolean =
+    format.sampleMimeType == MimeTypes.APPLICATION_CEA608 ||
+        format.sampleMimeType == MimeTypes.APPLICATION_CEA708
+
+/** 1-based position among the group's closed captions, or null when there is only one. */
+internal fun closedCaptionNumber(captionIndex: Int, captionCount: Int): Int? =
+    if (captionCount > 1 && captionIndex in 0 until captionCount) captionIndex + 1 else null
 
 internal fun normalizeSelectedVideoTrackId(
     selectedTrackId: String,

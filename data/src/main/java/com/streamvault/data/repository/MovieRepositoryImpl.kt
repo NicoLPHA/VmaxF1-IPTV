@@ -61,6 +61,7 @@ import com.streamvault.domain.model.VodCategoryLoadMode
 import com.streamvault.domain.repository.MovieRepository
 import com.streamvault.domain.repository.PlaybackHistoryRepository
 import com.streamvault.domain.repository.SyncMetadataRepository
+import com.streamvault.domain.util.SearchTextNormalizer
 import com.streamvault.domain.provider.CapabilityResolution
 import com.streamvault.domain.provider.ProviderContentReference
 import kotlinx.coroutines.CoroutineScope
@@ -111,6 +112,7 @@ class MovieRepositoryImpl @Inject constructor(
         const val SEARCH_RESULT_LIMIT = 200
         const val SEARCH_OVERSAMPLE_LIMIT = 500
         const val MIN_SEARCH_QUERY_LENGTH = 2
+        const val SEARCH_FALLBACK_PAGE_SIZE = 512
         const val BROWSE_WINDOW_BUFFER = 80
         const val XTREAM_CATEGORY_HYDRATION_CONCURRENCY = 1
         const val XTREAM_EMPTY_CATEGORY_RETRY_COOLDOWN_MILLIS = 30_000L
@@ -418,10 +420,11 @@ class MovieRepositoryImpl @Inject constructor(
                 query.filterBy.type != LibraryFilterType.ALL ||
                 query.sortBy != LibrarySortBy.LIBRARY ||
                 preferencesRepository.vodDuplicateHandlingMode.first() != VodDuplicateHandlingMode.SHOW_ALL
-            if (requiresCompleteCategory) {
-                query.categoryId?.let {
-                    requestCategoryHydration(query.providerId, it, VodCategoryHydrationRequest.COMPLETE)
-                }
+            val browsingProvider = loadCompatibilityProvider(query.providerId)
+            if (browsingProvider?.type == ProviderType.STALKER_PORTAL) {
+                query.categoryId?.let { syncManager.prioritizeStalkerIndexCategory(query.providerId, ContentType.MOVIE, it) }
+            } else if (requiresCompleteCategory) {
+                query.categoryId?.let { requestCategoryHydration(query.providerId, it, VodCategoryHydrationRequest.COMPLETE) }
             }
             query.categoryId?.takeIf { normalizedSearch.length < MIN_SEARCH_QUERY_LENGTH }?.let {
                 val provider = loadCompatibilityProvider(query.providerId)
@@ -435,7 +438,10 @@ class MovieRepositoryImpl @Inject constructor(
                     )
                 }
             }
-            emit(fetchMovieBrowseResult(query))
+            val browseQuery = if (browsingProvider?.type == ProviderType.STALKER_PORTAL &&
+                query.categoryId?.let { createStalkerProvider(query.providerId).isWildcardCategory(ContentType.MOVIE, it) } == true
+            ) query.copy(categoryId = null) else query
+            emit(fetchMovieBrowseResult(browseQuery))
         }.flowOn(Dispatchers.IO)
     }
 
@@ -466,16 +472,15 @@ class MovieRepositoryImpl @Inject constructor(
     ): Result<Unit> {
         val provider = loadCompatibilityProvider(providerId) ?: return Result.error("Provider not found")
         if (provider.type != ProviderType.STALKER_PORTAL) return Result.success(Unit)
-        val loadMode = preferencesRepository.vodCategoryLoadMode.first()
-        val effectiveRequest = if (
-            request == VodCategoryHydrationRequest.OPEN && loadMode == VodCategoryLoadMode.COMPLETE_ON_OPEN
-        ) VodCategoryHydrationRequest.COMPLETE else request
+        syncManager.prioritizeStalkerIndexCategory(providerId, ContentType.MOVIE, categoryId)
+        val effectiveRequest = if (request == VodCategoryHydrationRequest.COMPLETE) {
+            VodCategoryHydrationRequest.OPEN
+        } else request
         val current = movieCategoryHydrationDao.get(providerId, categoryId)
         val requestedPage = if (effectiveRequest == VodCategoryHydrationRequest.NEXT_PAGE) {
             ((current?.lastSuccessfulPage ?: 0) + 1).coerceAtLeast(1)
         } else null
         if (effectiveRequest == VodCategoryHydrationRequest.OPEN && (current?.lastSuccessfulPage ?: 0) > 0) {
-            scheduleMoviePrefetch(providerId, categoryId, loadMode)
             return Result.success(Unit)
         }
         val result = if (provider.catalogLayout == CatalogLayout.SPLIT && provider.catalogLayoutDetectionVersion > 0) {
@@ -494,38 +499,7 @@ class MovieRepositoryImpl @Inject constructor(
             )
             Result.success(Unit)
         }
-        if (result is Result.Success && request == VodCategoryHydrationRequest.OPEN) {
-            scheduleMoviePrefetch(providerId, categoryId, loadMode)
-        }
         return result
-    }
-
-    private fun scheduleMoviePrefetch(providerId: Long, categoryId: Long, loadMode: VodCategoryLoadMode) {
-        if (loadMode != VodCategoryLoadMode.PAGED) return
-        repositoryScope.launch {
-            val provider = loadBackgroundCompatibilityProvider(providerId) ?: return@launch
-            val current = movieCategoryHydrationDao.get(providerId, categoryId)
-            if (current?.isComplete == true) return@launch
-            if (provider.catalogLayout == CatalogLayout.SPLIT && provider.catalogLayoutDetectionVersion > 0) {
-                syncManager.hydrateSplitVodCategory(
-                    providerId,
-                    categoryId,
-                    VodCategoryHydrationRequest.NEXT_PAGE,
-                    ContentType.MOVIE
-                )
-            } else {
-                val count = movieDao.getCountByCategory(providerId, categoryId).first()
-                hydrateStalkerMovieCategoryToCount(
-                    providerId,
-                    categoryId,
-                    provider,
-                    requiredCount = count + 1,
-                    localCount = count,
-                    hydration = current,
-                    requestedPage = ((current?.lastSuccessfulPage ?: 0) + 1).coerceAtLeast(1)
-                )
-            }
-        }
     }
 
     override fun searchMovies(providerId: Long, query: String): Flow<List<Movie>> =
@@ -535,9 +509,7 @@ class MovieRepositoryImpl @Inject constructor(
             } else combine(
                 safeMovieSearchFlow(
                     source = movieDao.search(providerId, ftsQuery, SEARCH_RESULT_LIMIT),
-                    fallback = {
-                        movieDao.searchFallback(providerId, query.trim().toSqlLikePattern(), SEARCH_RESULT_LIMIT)
-                    },
+                    fallback = { fallbackMovieSearch(providerId, query.trim(), SEARCH_RESULT_LIMIT) },
                     rawQuery = query.trim()
                 ),
                 preferencesRepository.parentalControlLevel
@@ -921,11 +893,11 @@ class MovieRepositoryImpl @Inject constructor(
                         safeMovieSearchFlow(
                             source = movieDao.searchByCategory(query.providerId, categoryId, ftsQuery, SEARCH_OVERSAMPLE_LIMIT),
                             fallback = {
-                                movieDao.searchByCategoryFallback(
+                                fallbackMovieSearch(
                                     query.providerId,
-                                    categoryId,
-                                    normalizedSearch.toSqlLikePattern(),
-                                    SEARCH_OVERSAMPLE_LIMIT
+                                    normalizedSearch,
+                                    SEARCH_OVERSAMPLE_LIMIT,
+                                    categoryId
                                 )
                             },
                             rawQuery = normalizedSearch
@@ -941,11 +913,7 @@ class MovieRepositoryImpl @Inject constructor(
                     safeMovieSearchFlow(
                         source = movieDao.search(query.providerId, ftsQuery, SEARCH_RESULT_LIMIT),
                         fallback = {
-                            movieDao.searchFallback(
-                                query.providerId,
-                                normalizedSearch.toSqlLikePattern(),
-                                SEARCH_RESULT_LIMIT
-                            )
+                            fallbackMovieSearch(query.providerId, normalizedSearch, SEARCH_RESULT_LIMIT)
                         },
                         rawQuery = normalizedSearch
                     ),
@@ -1595,11 +1563,11 @@ class MovieRepositoryImpl @Inject constructor(
     }
 
     private fun movieMatchesSearch(movie: Movie, searchQuery: String): Boolean {
-        val normalizedQuery = searchQuery.trim().lowercase()
+        val normalizedQuery = SearchTextNormalizer.normalize(searchQuery.trim())
         if (normalizedQuery.isBlank()) return true
         return sequenceOf(movie.name, movie.genre, movie.categoryName, movie.year)
             .filterNotNull()
-            .any { value -> value.lowercase().contains(normalizedQuery) }
+            .any { value -> SearchTextNormalizer.normalize(value).contains(normalizedQuery) }
     }
 
     private fun safeMovieSearchFlow(
@@ -1616,21 +1584,45 @@ class MovieRepositoryImpl @Inject constructor(
                 }
             }
         } catch (error: SQLiteException) {
-            Log.w(TAG, "FTS movie search failed for queryLength=${rawQuery.length}; using LIKE-only search", error)
+            Log.w(TAG, "FTS movie search failed for queryLength=${rawQuery.length}; using normalized search fallback", error)
             emitAll(fallback())
         }
     }
 
-    private fun String.toSqlLikePattern(): String {
-        val escaped = buildString(length) {
-            this@toSqlLikePattern.forEach { char ->
-                when (char) {
-                    '%', '_', '\\' -> append('\\')
+    private fun fallbackMovieSearch(
+        providerId: Long,
+        query: String,
+        limit: Int,
+        categoryId: Long? = null
+    ): Flow<List<MovieBrowseEntity>> {
+        val foldedQuery = SearchTextNormalizer.normalize(query)
+        if (foldedQuery.isBlank() || limit <= 0) return flowOf(emptyList())
+
+        return flow {
+            val matches = sortedSetOf(compareBy<MovieBrowseEntity> { it.name }.thenBy { it.id })
+            var offset = 0
+            while (true) {
+                val page = categoryId?.let {
+                    movieDao.getByCategoryPage(providerId, it, SEARCH_FALLBACK_PAGE_SIZE, offset)
+                }?.first() ?: movieDao.getByProviderPage(providerId, SEARCH_FALLBACK_PAGE_SIZE, offset).first()
+                if (page.isEmpty()) break
+
+                page.forEach { movie ->
+                    val matchesQuery = sequenceOf(movie.name, movie.genre, movie.categoryName, movie.year)
+                        .filterNotNull()
+                        .any { SearchTextNormalizer.normalize(it).contains(foldedQuery) }
+                    if (matchesQuery) {
+                        matches += movie
+                        if (matches.size > limit) matches.remove(matches.last())
+                    }
                 }
-                append(char)
+
+                offset += page.size
+                if (page.size < SEARCH_FALLBACK_PAGE_SIZE) break
             }
+
+            emit(matches.toList())
         }
-        return "%$escaped%"
     }
 
     private fun String.toSqlPrefixLikePattern(): String {
@@ -1765,10 +1757,14 @@ class MovieRepositoryImpl @Inject constructor(
         loadCompletely: Boolean = false
     ): Boolean {
         val now = System.currentTimeMillis()
+        if (hydration?.isComplete == true &&
+            ContentCachePolicy.shouldRefresh(hydration.lastHydratedAt, ContentCachePolicy.CATALOG_TTL_MILLIS, now)
+        ) return true
+        if (localCount > 0) return false
         val hasEmptySuccessfulCheckpoint = localCount == 0 &&
             (hydration?.lastSuccessfulPage ?: hydration?.lastLoadedPage ?: 0) > 0
         if (hasEmptySuccessfulCheckpoint) return true
-        if (hydration == null || (hydration.isComplete && ContentCachePolicy.shouldRefresh(hydration.lastHydratedAt, ContentCachePolicy.CATALOG_TTL_MILLIS, now))) return true
+        if (hydration == null) return true
         if (hydration?.isComplete == true) return false
         if (loadCompletely) return true
         if (localCount >= requiredCount) return false

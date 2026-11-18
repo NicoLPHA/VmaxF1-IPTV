@@ -317,6 +317,13 @@
     <string name="settings_status_expired">Udløbet</string>
     <string name="settings_status_disabled">Deaktiveret</string>
     <string name="settings_status_unknown">Ukendt</string>
+    <string name="settings_provider_connection_online">Online</string>
+    <string name="settings_provider_connection_unavailable">Utilgængelig</string>
+    <string name="settings_provider_connection_checking">Kontrollerer…</string>
+    <string name="settings_provider_connection_check_now">Tjek nu</string>
+    <string name="settings_provider_connection_last_checked">Sidst kontrolleret</string>
+    <string name="settings_provider_connection_authentication_required">Log ind påkrævet</string>
+    <string name="settings_provider_connection_unknown">Ukendt</string>
     <string name="settings_select_level">Vælg beskyttelsesniveau</string>
     <string name="settings_level_off_desc">FRA - Ingen begrænsninger</string>
     <string name="settings_level_off_subtitle">Voksenindhold vises overalt.</string>
@@ -941,4 +948,31 @@
     <string name="settings_sports_custom_definition_file_error">Denne JSON-fil kunne ikke indlæses</string>
     <string name="settings_experimental_badge">Eksperimentel</string>
     <string name="settings_sync_index_progress">%1$s · %2$s</string>
+    <string name="settings_refresh_rate_matching">Tilpas til indholdets billedfrekvens</string>
+    <string name="settings_refresh_rate_matching_description">Tilpasser skærmens opdateringshastighed til videoen for mere flydende bevægelser. Kræver understøttelse fra skærmen; skærmen kan kortvarigt blive sort ved skift.</string>
+    <string name="settings_epg_phone_qr_start">Vis QR-kode</string>
+    <string name="settings_epg_phone_qr_stop">Stop parring</string>
+    <string name="settings_epg_phone_qr_warning">Sikkerhed: Parring sender loginoplysninger uden kryptering via dit lokale netværk. Brug kun et privat Wi-Fi-netværk, du har tillid til.</string>
+    <string name="settings_epg_phone_qr_complete">Tilføjet</string>
+    <string name="settings_epg_phone_qr_error">Fejl</string>
+    <string name="settings_backup_export_sections">Vælg sektioner til eksport</string>
+    <string name="settings_m3u_catchup_query_format">Format for catch-up-forespørgsel</string>
+    <string name="settings_m3u_catchup_query_format_subtitle">Bruges til M3U-kanaler uden deres egen catch-up-kilde. Lad feltet være tomt for at slå reserveformatet fra. Eksempel: ?utc={utc}</string>
+    <string name="settings_m3u_catchup_query_format_disabled">Deaktiveret</string>
+    <string name="trakt_browser_sign_in">Log ind via browser</string>
+    <string name="trakt_phone_sign_in">Godkend på en anden enhed</string>
+    <string name="trakt_device_instructions">Scan QR-koden, eller åbn %1$s på telefonen. Indtast koden nedenfor, og godkend adgang. Denne skærm opretter automatisk forbindelse. Hvis koden udløber, skal du annullere og prøve igen.</string>
+    <string name="settings_text_size">Tekststørrelse</string>
+    <string name="settings_text_size_default">Standard (100%)</string>
+    <string name="settings_text_size_system">Følg enheden</string>
+    <string name="settings_text_size_custom">Brugerdefineret</string>
+    <string name="settings_privacy_policy">Privatlivspolitik</string>
+    <string name="settings_category_reorder_channels">Omarranger kanaler</string>
+    <string name="settings_category_sort_manual">Manuel</string>
+    <string name="settings_category_reorder_categories">Omarranger kategorier</string>
+    <string name="settings_default_live_channel_order">Standardrækkefølge for kanaler</string>
+    <string name="settings_live_order_save_failed">Kanalrækkefølgen kunne ikke gemmes. Prøv igen.</string>
+    <string name="settings_live_order_recent">Senest sete</string>
+    <string name="settings_live_order_most">Mest sete</string>
+    <string name="settings_live_order_usage_help">Visninger tæller efter 10 sekunders afspilning. Mest sete summerer afspilningstiden for de seneste 30 dage.</string>
 </resources>

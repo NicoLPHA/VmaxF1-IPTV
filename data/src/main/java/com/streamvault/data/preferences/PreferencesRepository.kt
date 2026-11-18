@@ -1,5 +1,6 @@
 package com.streamvault.data.preferences
 
+import com.streamvault.domain.model.AppTextSize
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Build
@@ -59,6 +60,7 @@ import com.streamvault.domain.model.VodVariantObservation
 import com.streamvault.domain.model.VodVariantPreferenceMode
 import com.streamvault.domain.model.PlayerSurfaceMode
 import com.streamvault.domain.model.PlayerBackButtonVisibility
+import com.streamvault.domain.provider.DEFAULT_M3U_CATCH_UP_QUERY_FORMAT
 import com.streamvault.domain.settings.VodTrackPreferenceScope
 import com.streamvault.domain.settings.VodTrackPreferences
 import com.streamvault.domain.sports.provider.SportsEventSourceMode
@@ -444,6 +446,7 @@ class PreferencesRepository @Inject constructor(
         val APP_TOP_LEVEL_DESTINATIONS = stringPreferencesKey("app_top_level_destinations")
         val APP_HOME_DASHBOARD_SHELVES = stringPreferencesKey("app_home_dashboard_shelves")
         val APP_TIME_FORMAT = stringPreferencesKey("app_time_format")
+        val APP_TEXT_SIZE = stringPreferencesKey("app_text_size")
         val APP_THEME = stringPreferencesKey("app_theme")
         val SPORTS_EVENT_SOURCE_MODE = stringPreferencesKey("sports_event_source_mode")
         val SPORTS_EVENT_SOURCE_INSTANCE_ID = stringPreferencesKey("sports_event_source_instance_id")
@@ -545,6 +548,7 @@ class PreferencesRepository @Inject constructor(
         val PLAYER_TIMESHIFT_ENABLED = booleanPreferencesKey("player_timeshift_enabled")
         val PLAYER_TIMESHIFT_DEPTH_MINUTES = intPreferencesKey("player_timeshift_depth_minutes")
         val PLAYER_TIMESHIFT_BACKEND = stringPreferencesKey("player_timeshift_backend")
+        val M3U_CATCH_UP_QUERY_FORMAT = stringPreferencesKey("m3u_catch_up_query_format")
         val DEFAULT_STOP_PLAYBACK_TIMER_MINUTES = intPreferencesKey("default_stop_playback_timer_minutes")
         val DEFAULT_IDLE_STANDBY_TIMER_MINUTES = intPreferencesKey("default_idle_standby_timer_minutes")
         val LAST_SPEED_TEST_MEGABITS = stringPreferencesKey("last_speed_test_megabits")
@@ -558,6 +562,7 @@ class PreferencesRepository @Inject constructor(
         val XTREAM_BASE64_TEXT_COMPATIBILITY = booleanPreferencesKey("xtream_base64_text_compatibility")
         val XTREAM_TEXT_IMPORT_GENERATION = longPreferencesKey("xtream_text_import_generation")
         val ZAP_AUTO_REVERT = booleanPreferencesKey("zap_auto_revert")
+        val PLAYER_REFRESH_RATE_MATCHING_ENABLED = booleanPreferencesKey("player_refresh_rate_matching_enabled")
         val PREVENT_STANDBY_DURING_PLAYBACK = booleanPreferencesKey("prevent_standby_during_playback")
         val AUTO_PLAY_NEXT_EPISODE = booleanPreferencesKey("auto_play_next_episode")
         val AUTO_CHECK_APP_UPDATES = booleanPreferencesKey("auto_check_app_updates")
@@ -895,7 +900,7 @@ class PreferencesRepository @Inject constructor(
     }
 
     override val playerLiveOverlayTimeoutSeconds: Flow<Int> = context.dataStore.data.map { preferences ->
-        (preferences[PreferencesKeys.PLAYER_LIVE_OVERLAY_TIMEOUT_SECONDS] ?: 4).coerceIn(2, 60)
+        (preferences[PreferencesKeys.PLAYER_LIVE_OVERLAY_TIMEOUT_SECONDS] ?: 6).coerceIn(2, 60)
     }
 
     override val playerLiveClockEnabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
@@ -979,6 +984,10 @@ class PreferencesRepository @Inject constructor(
 
     override val playerTimeshiftBackend: Flow<TimeshiftBackendPreference> = context.dataStore.data.map { preferences ->
         parseTimeshiftBackendPreference(preferences[PreferencesKeys.PLAYER_TIMESHIFT_BACKEND])
+    }
+
+    override val m3uCatchUpQueryFormat: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.M3U_CATCH_UP_QUERY_FORMAT] ?: DEFAULT_M3U_CATCH_UP_QUERY_FORMAT
     }
 
     override val defaultStopPlaybackTimerMinutes: Flow<Int> = context.dataStore.data.map { preferences ->
@@ -1121,6 +1130,10 @@ class PreferencesRepository @Inject constructor(
                 preferences[key] = generation
             }
         }
+    }
+
+    override val playerRefreshRateMatchingEnabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.PLAYER_REFRESH_RATE_MATCHING_ENABLED] ?: true
     }
 
     override val preventStandbyDuringPlayback: Flow<Boolean> = context.dataStore.data.map { preferences ->
@@ -1282,6 +1295,12 @@ class PreferencesRepository @Inject constructor(
     suspend fun setMaxConcurrentStreams(count: Int) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.MAX_CONCURRENT_STREAMS] = count.coerceIn(1, 4)
+        }
+    }
+
+    override suspend fun setPlayerRefreshRateMatchingEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.PLAYER_REFRESH_RATE_MATCHING_ENABLED] = enabled
         }
     }
 
@@ -1824,6 +1843,18 @@ class PreferencesRepository @Inject constructor(
         }
     }
 
+    override suspend fun setM3uCatchUpQueryFormat(format: String) {
+        val normalized = format.trim().filterNot { it == '\r' || it == '\n' || it == '\t' }
+            .take(8_192)
+        context.dataStore.edit { preferences ->
+            if (normalized.isBlank()) {
+                preferences.remove(PreferencesKeys.M3U_CATCH_UP_QUERY_FORMAT)
+            } else {
+                preferences[PreferencesKeys.M3U_CATCH_UP_QUERY_FORMAT] = normalized
+            }
+        }
+    }
+
     override suspend fun setDefaultStopPlaybackTimerMinutes(minutes: Int) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.DEFAULT_STOP_PLAYBACK_TIMER_MINUTES] = sanitizePlaybackTimerMinutes(minutes)
@@ -2132,6 +2163,14 @@ class PreferencesRepository @Inject constructor(
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.APP_TIME_FORMAT] = format.storageValue
         }
+    }
+
+    override val appTextSize: Flow<AppTextSize> = context.dataStore.data.map {
+        AppTextSize.fromStorage(it[PreferencesKeys.APP_TEXT_SIZE])
+    }
+
+    override suspend fun setAppTextSize(value: AppTextSize) {
+        context.dataStore.edit { it[PreferencesKeys.APP_TEXT_SIZE] = value.toStorage() }
     }
 
     override val appTheme: Flow<AppTheme> = context.dataStore.data.map { preferences ->
@@ -2850,6 +2889,7 @@ class PreferencesRepository @Inject constructor(
                 ?.mapNotNull { token -> token.toLongOrNull() }
                 ?.toMutableSet()
                 ?: mutableSetOf()
+            if (type == ContentType.LIVE && (categoryId in current) != pinned) LiveCategoryOrderStore.bumpRevision(preferences, providerId)
             if (pinned) {
                 current += categoryId
             } else {
@@ -2916,6 +2956,7 @@ class PreferencesRepository @Inject constructor(
     ) {
         val key = stringPreferencesKey(pinnedCategoriesKey(providerId, type))
         context.dataStore.edit { preferences ->
+            if (type == ContentType.LIVE) LiveCategoryOrderStore.bumpRevision(preferences, providerId)
             if (categoryIds.isEmpty()) {
                 preferences.remove(key)
             } else {
@@ -2923,6 +2964,43 @@ class PreferencesRepository @Inject constructor(
             }
         }
     }
+
+    private val liveCategoryOrderStore by lazy { LiveCategoryOrderStore(preferencesDataStore) }
+
+    internal suspend fun prepareDuplicateCombinedIdentityMigration(oldIdentity: String, profileId: Long): String =
+        liveCategoryOrderStore.prepareDuplicateCombinedIdentityMigration(oldIdentity, profileId)
+
+    internal suspend fun prepareCombinedIdentityMigration(oldIdentity: String): String =
+        liveCategoryOrderStore.prepareCombinedIdentityMigration(oldIdentity)
+
+    override val defaultLiveChannelOrder: Flow<com.streamvault.domain.model.LiveChannelOrderMode> =
+        preferencesDataStore.data.map { values ->
+            val mode = runCatching { com.streamvault.domain.model.LiveChannelOrderMode.valueOf(
+                values[stringPreferencesKey("default_live_channel_order")] ?: "PROVIDER") }.getOrNull()
+            mode?.takeIf { it in com.streamvault.domain.policy.liveChannelPresetModes }
+                ?: com.streamvault.domain.model.LiveChannelOrderMode.PROVIDER
+        }.distinctUntilChanged()
+
+    override suspend fun setDefaultLiveChannelOrder(mode: com.streamvault.domain.model.LiveChannelOrderMode) {
+        require(mode in com.streamvault.domain.policy.liveChannelPresetModes)
+        preferencesDataStore.edit { it[stringPreferencesKey("default_live_channel_order")] = mode.name }
+    }
+
+    override fun getLiveCategoryOrder(providerId: Long) = liveCategoryOrderStore.observe(providerId)
+
+    override suspend fun saveLiveCategoryOrder(providerId: Long, expectedRevision: Long, order: com.streamvault.domain.model.LiveCategoryOrder) =
+        liveCategoryOrderStore.save(providerId, expectedRevision, order)
+
+    override suspend fun saveLiveCategoryOrderWithPins(providerId: Long, expectedRevision: Long, order: com.streamvault.domain.model.LiveCategoryOrder) =
+        liveCategoryOrderStore.save(providerId, expectedRevision, order, includePins = true)
+
+    override fun getCombinedLiveCategoryOrder(profileIdentity: String) = liveCategoryOrderStore.observeCombined(profileIdentity)
+
+    override suspend fun saveCombinedLiveCategoryOrder(
+        profileIdentity: String,
+        expectedRevision: Long,
+        order: com.streamvault.domain.model.LiveCategoryOrder
+    ) = liveCategoryOrderStore.saveCombined(profileIdentity, expectedRevision, order)
 
     override fun getCategorySortMode(providerId: Long, type: ContentType): Flow<CategorySortMode> {
         val key = stringPreferencesKey(categorySortModeKey(providerId, type))
@@ -2936,6 +3014,7 @@ class PreferencesRepository @Inject constructor(
     override suspend fun setCategorySortMode(providerId: Long, type: ContentType, mode: CategorySortMode) {
         val key = stringPreferencesKey(categorySortModeKey(providerId, type))
         context.dataStore.edit { preferences ->
+            if (type == ContentType.LIVE && preferences[key] != mode.name) LiveCategoryOrderStore.bumpRevision(preferences, providerId)
             preferences[key] = mode.name
         }
     }

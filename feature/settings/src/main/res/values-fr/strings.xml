@@ -313,6 +313,13 @@
     <string name="settings_status_expired">Expiré</string>
     <string name="settings_status_disabled">Désactivé</string>
     <string name="settings_status_unknown">Inconnu</string>
+    <string name="settings_provider_connection_online">En ligne</string>
+    <string name="settings_provider_connection_unavailable">Indisponible</string>
+    <string name="settings_provider_connection_checking">Vérification…</string>
+    <string name="settings_provider_connection_check_now">Vérifier maintenant</string>
+    <string name="settings_provider_connection_last_checked">Dernière vérification</string>
+    <string name="settings_provider_connection_authentication_required">Connexion requise</string>
+    <string name="settings_provider_connection_unknown">Inconnu</string>
     <string name="settings_select_level">Sélectionnez le niveau de protection</string>
     <string name="settings_level_off_desc">DÉSACTIVÉ - Aucune restriction</string>
     <string name="settings_level_off_subtitle">Le contenu adulte apparaît partout.</string>
@@ -941,4 +948,31 @@
     <string name="settings_sports_custom_definition_file_error">Impossible de charger ce fichier JSON</string>
     <string name="settings_experimental_badge">Expérimental</string>
     <string name="settings_sync_index_progress">%1$s · %2$s</string>
+    <string name="settings_refresh_rate_matching">Adapter à la fréquence du contenu</string>
+    <string name="settings_refresh_rate_matching_description">Adapte la fréquence de rafraîchissement de l’écran à la vidéo pour des mouvements plus fluides. Nécessite un écran compatible ; le changement peut brièvement noircir l’écran.</string>
+    <string name="settings_epg_phone_qr_start">Afficher le code QR</string>
+    <string name="settings_epg_phone_qr_stop">Arrêter l’appairage</string>
+    <string name="settings_epg_phone_qr_warning">Sécurité : l’association envoie les identifiants sans chiffrement sur votre réseau local. Utilisez uniquement un réseau Wi-Fi privé de confiance.</string>
+    <string name="settings_epg_phone_qr_complete">Ajouté</string>
+    <string name="settings_epg_phone_qr_error">Erreur</string>
+    <string name="settings_backup_export_sections">Choisissez les sections à exporter</string>
+    <string name="settings_m3u_catchup_query_format">Format de requête de rattrapage</string>
+    <string name="settings_m3u_catchup_query_format_subtitle">Utilisé pour les chaînes M3U sans source de rattrapage propre. Laissez le champ vide pour désactiver ce format de secours. Exemple : ?utc={utc}</string>
+    <string name="settings_m3u_catchup_query_format_disabled">Désactivé</string>
+    <string name="trakt_browser_sign_in">Se connecter dans le navigateur</string>
+    <string name="trakt_phone_sign_in">Autoriser sur un autre appareil</string>
+    <string name="trakt_device_instructions">Scannez le code QR ou ouvrez %1$s sur votre téléphone. Saisissez le code ci-dessous et autorisez l’accès. Cet écran se connecte automatiquement. Si le code expire, annulez et réessayez.</string>
+    <string name="settings_text_size">Taille du texte</string>
+    <string name="settings_text_size_default">Par défaut (100%)</string>
+    <string name="settings_text_size_system">Suivre les réglages de l’appareil</string>
+    <string name="settings_text_size_custom">Personnalisée</string>
+    <string name="settings_privacy_policy">Politique de confidentialité</string>
+    <string name="settings_category_reorder_channels">Réorganiser les chaînes</string>
+    <string name="settings_category_sort_manual">Manuel</string>
+    <string name="settings_category_reorder_categories">Réorganiser les catégories</string>
+    <string name="settings_default_live_channel_order">Ordre des chaînes par défaut</string>
+    <string name="settings_live_order_save_failed">Impossible d’enregistrer l’ordre des chaînes. Réessayez.</string>
+    <string name="settings_live_order_recent">Vues récemment</string>
+    <string name="settings_live_order_most">Les plus regardées</string>
+    <string name="settings_live_order_usage_help">Les vues comptent après 10 secondes de lecture. Les plus regardées cumule le temps de lecture des 30 derniers jours.</string>
 </resources>

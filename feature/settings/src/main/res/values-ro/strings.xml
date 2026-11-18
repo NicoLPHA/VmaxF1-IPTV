@@ -318,6 +318,13 @@
     <string name="settings_status_expired">A expirat</string>
     <string name="settings_status_disabled">Dezactivat</string>
     <string name="settings_status_unknown">Necunoscut</string>
+    <string name="settings_provider_connection_online">Online</string>
+    <string name="settings_provider_connection_unavailable">Indisponibil</string>
+    <string name="settings_provider_connection_checking">Se verifică…</string>
+    <string name="settings_provider_connection_check_now">Verifică acum</string>
+    <string name="settings_provider_connection_last_checked">Ultima verificare</string>
+    <string name="settings_provider_connection_authentication_required">Autentificare necesară</string>
+    <string name="settings_provider_connection_unknown">Necunoscut</string>
     <string name="settings_select_level">Selectați Nivel de protecție</string>
     <string name="settings_level_off_desc">OFF - Fără restricții</string>
     <string name="settings_level_off_subtitle">Conținutul pentru adulți apare peste tot.</string>
@@ -944,4 +951,31 @@
     <string name="settings_sports_custom_definition_file_error">Acest fișier JSON nu a putut fi încărcat</string>
     <string name="settings_experimental_badge">Experimental</string>
     <string name="settings_sync_index_progress">%1$s · %2$s</string>
+    <string name="settings_refresh_rate_matching">Potrivește rata de cadre a conținutului</string>
+    <string name="settings_refresh_rate_matching_description">Adaptează rata de reîmprospătare a ecranului la videoclip pentru mișcări mai fluide. Necesită suport din partea ecranului; la schimbare, ecranul se poate înnegri pentru scurt timp.</string>
+    <string name="settings_epg_phone_qr_start">Afișați codul QR</string>
+    <string name="settings_epg_phone_qr_stop">Opriți asocierea</string>
+    <string name="settings_epg_phone_qr_warning">Securitate: Asocierea trimite datele de conectare necriptate prin rețeaua locală. Folosiți numai o rețea Wi-Fi privată și de încredere.</string>
+    <string name="settings_epg_phone_qr_complete">Adăugat</string>
+    <string name="settings_epg_phone_qr_error">Eroare</string>
+    <string name="settings_backup_export_sections">Alegeți secțiunile de exportat</string>
+    <string name="settings_m3u_catchup_query_format">Formatul interogării de redare din arhivă</string>
+    <string name="settings_m3u_catchup_query_format_subtitle">Este folosit pentru canalele M3U fără o sursă proprie de redare din arhivă. Lăsați gol pentru a dezactiva formatul alternativ. Exemplu: ?utc={utc}</string>
+    <string name="settings_m3u_catchup_query_format_disabled">Dezactivat</string>
+    <string name="trakt_browser_sign_in">Autentificare prin browser</string>
+    <string name="trakt_phone_sign_in">Aprobă pe alt dispozitiv</string>
+    <string name="trakt_device_instructions">Scanează codul QR sau deschide %1$s pe telefon. Introdu codul de mai jos și aprobă accesul. Acest ecran se conectează automat. Dacă expiră codul, anulează și încearcă din nou.</string>
+    <string name="settings_text_size">Dimensiunea textului</string>
+    <string name="settings_text_size_default">Implicită (100%)</string>
+    <string name="settings_text_size_system">Conform dispozitivului</string>
+    <string name="settings_text_size_custom">Personalizată</string>
+    <string name="settings_privacy_policy">Politica de confidențialitate</string>
+    <string name="settings_category_reorder_channels">Reordonați canalele</string>
+    <string name="settings_category_sort_manual">Manual</string>
+    <string name="settings_category_reorder_categories">Reordonează categoriile</string>
+    <string name="settings_default_live_channel_order">Ordinea implicită a canalelor</string>
+    <string name="settings_live_order_save_failed">Ordinea canalelor nu a putut fi salvată. Încercați din nou.</string>
+    <string name="settings_live_order_recent">Vizionate recent</string>
+    <string name="settings_live_order_most">Cele mai vizionate</string>
+    <string name="settings_live_order_usage_help">Vizionările se înregistrează după 10 secunde de redare. Cele mai vizionate însumează timpul de redare din ultimele 30 de zile.</string>
 </resources>

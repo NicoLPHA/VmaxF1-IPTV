@@ -307,6 +307,13 @@
     <string name="settings_status_expired">منتهي الصلاحية</string>
     <string name="settings_status_disabled">معطّل</string>
     <string name="settings_status_unknown">غير معروف</string>
+    <string name="settings_provider_connection_online">متصل</string>
+    <string name="settings_provider_connection_unavailable">غير متاح</string>
+    <string name="settings_provider_connection_checking">جارٍ التحقق…</string>
+    <string name="settings_provider_connection_check_now">تحقّق الآن</string>
+    <string name="settings_provider_connection_last_checked">آخر تحقق</string>
+    <string name="settings_provider_connection_authentication_required">يتطلب تسجيل الدخول</string>
+    <string name="settings_provider_connection_unknown">غير معروف</string>
     <string name="settings_select_level">اختر مستوى الحماية</string>
     <string name="settings_level_off_desc">إيقاف - بدون قيود</string>
     <string name="settings_level_off_subtitle">يظهر محتوى البالغين في كل مكان.</string>
@@ -953,4 +960,31 @@
     <string name="settings_sports_custom_definition_file_error">تعذّر تحميل ملف JSON هذا</string>
     <string name="settings_experimental_badge">تجريبي</string>
     <string name="settings_sync_index_progress">%1$s · %2$s</string>
+    <string name="settings_refresh_rate_matching">مطابقة معدل إطارات المحتوى</string>
+    <string name="settings_refresh_rate_matching_description">مطابقة معدل تحديث الشاشة مع الفيديو لحركة أكثر سلاسة. يتطلب دعم الشاشة؛ قد تصبح الشاشة سوداء للحظات عند التبديل.</string>
+    <string name="settings_epg_phone_qr_start">إظهار رمز QR</string>
+    <string name="settings_epg_phone_qr_stop">إيقاف الإقران</string>
+    <string name="settings_epg_phone_qr_warning">تنبيه أمني: يرسل الاقتران بيانات تسجيل الدخول عبر شبكتك المحلية دون تشفير. استخدم شبكة Wi-Fi خاصة وموثوقة فقط.</string>
+    <string name="settings_epg_phone_qr_complete">تمت الإضافة</string>
+    <string name="settings_epg_phone_qr_error">خطأ</string>
+    <string name="settings_backup_export_sections">اختر الأقسام المراد تصديرها</string>
+    <string name="settings_m3u_catchup_query_format">تنسيق استعلام الإعادة</string>
+    <string name="settings_m3u_catchup_query_format_subtitle">يُستخدم لقنوات M3U التي لا تحتوي على مصدر إعادة خاص بها. اتركه فارغًا لتعطيل هذا البديل. مثال: ?utc={utc}</string>
+    <string name="settings_m3u_catchup_query_format_disabled">معطّل</string>
+    <string name="trakt_browser_sign_in">تسجيل الدخول عبر المتصفح</string>
+    <string name="trakt_phone_sign_in">الموافقة على جهاز آخر</string>
+    <string name="trakt_device_instructions">امسح رمز QR أو افتح %1$s على هاتفك. أدخل الرمز أدناه ووافق على الوصول. تتصل هذه الشاشة تلقائيًا. إذا انتهت صلاحية الرمز، فألغِ المحاولة وأعدها.</string>
+    <string name="settings_text_size">حجم النص</string>
+    <string name="settings_text_size_default">الافتراضي (100%)</string>
+    <string name="settings_text_size_system">اتباع إعدادات الجهاز</string>
+    <string name="settings_text_size_custom">مخصص</string>
+    <string name="settings_privacy_policy">سياسة الخصوصية</string>
+    <string name="settings_category_reorder_channels">إعادة ترتيب القنوات</string>
+    <string name="settings_category_sort_manual">يدوي</string>
+    <string name="settings_category_reorder_categories">إعادة ترتيب الفئات</string>
+    <string name="settings_default_live_channel_order">ترتيب القنوات الافتراضي</string>
+    <string name="settings_live_order_save_failed">تعذر حفظ ترتيب القنوات. حاول مجددًا.</string>
+    <string name="settings_live_order_recent">الأحدث مشاهدة</string>
+    <string name="settings_live_order_most">الأكثر مشاهدة</string>
+    <string name="settings_live_order_usage_help">تُحتسب المشاهدة بعد 10 ثوانٍ من التشغيل. يجمع الأكثر مشاهدة وقت التشغيل خلال آخر 30 يومًا.</string>
 </resources>

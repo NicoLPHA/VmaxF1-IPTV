@@ -313,6 +313,13 @@
     <string name="settings_status_expired">期限切れ</string>
     <string name="settings_status_disabled">無効</string>
     <string name="settings_status_unknown">不明</string>
+    <string name="settings_provider_connection_online">オンライン</string>
+    <string name="settings_provider_connection_unavailable">利用不可</string>
+    <string name="settings_provider_connection_checking">確認中…</string>
+    <string name="settings_provider_connection_check_now">今すぐ確認</string>
+    <string name="settings_provider_connection_last_checked">最終確認</string>
+    <string name="settings_provider_connection_authentication_required">サインインが必要</string>
+    <string name="settings_provider_connection_unknown">不明</string>
     <string name="settings_select_level">保護レベルを選択</string>
     <string name="settings_level_off_desc">OFF - 制限なし</string>
     <string name="settings_level_off_subtitle">アダルトコンテンツはすべての場所に表示されます。</string>
@@ -939,4 +946,31 @@
     <string name="settings_sports_custom_definition_file_error">この JSON ファイルを読み込めませんでした</string>
     <string name="settings_experimental_badge">試験運用</string>
     <string name="settings_sync_index_progress">%1$s · %2$s</string>
+    <string name="settings_refresh_rate_matching">コンテンツのフレームレートに合わせる</string>
+    <string name="settings_refresh_rate_matching_description">映像の動きを滑らかにするため、画面のリフレッシュレートを動画に合わせます。対応するディスプレイが必要です。切り替え時に画面が一瞬暗くなることがあります。</string>
+    <string name="settings_epg_phone_qr_start">QR コードを表示</string>
+    <string name="settings_epg_phone_qr_stop">ペアリングを停止</string>
+    <string name="settings_epg_phone_qr_warning">セキュリティ: ペアリングではログイン情報が暗号化されずにローカルネットワーク経由で送信されます。信頼できるプライベート Wi-Fi のみ使用してください。</string>
+    <string name="settings_epg_phone_qr_complete">追加済み</string>
+    <string name="settings_epg_phone_qr_error">エラー</string>
+    <string name="settings_backup_export_sections">エクスポートする項目を選択</string>
+    <string name="settings_m3u_catchup_query_format">キャッチアップクエリ形式</string>
+    <string name="settings_m3u_catchup_query_format_subtitle">専用のキャッチアップソースがないM3Uチャンネルに使用します。この代替形式を無効にするには空欄にします。例: ?utc={utc}</string>
+    <string name="settings_m3u_catchup_query_format_disabled">無効</string>
+    <string name="trakt_browser_sign_in">ブラウザーでログイン</string>
+    <string name="trakt_phone_sign_in">別の端末で承認</string>
+    <string name="trakt_device_instructions">QRコードをスキャンするか、スマートフォンで %1$s を開いてください。下のコードを入力し、アクセスを承認すると、この画面は自動的に接続されます。コードの有効期限が切れた場合は、キャンセルして再試行してください。</string>
+    <string name="settings_text_size">文字サイズ</string>
+    <string name="settings_text_size_default">標準（100%）</string>
+    <string name="settings_text_size_system">端末の設定に従う</string>
+    <string name="settings_text_size_custom">カスタム</string>
+    <string name="settings_privacy_policy">プライバシーポリシー</string>
+    <string name="settings_category_reorder_channels">チャンネルの並べ替え</string>
+    <string name="settings_category_sort_manual">手動</string>
+    <string name="settings_category_reorder_categories">カテゴリの並べ替え</string>
+    <string name="settings_default_live_channel_order">チャンネルの既定の並び順</string>
+    <string name="settings_live_order_save_failed">チャンネルの順序を保存できませんでした。もう一度お試しください。</string>
+    <string name="settings_live_order_recent">最近視聴した順</string>
+    <string name="settings_live_order_most">視聴時間が長い順</string>
+    <string name="settings_live_order_usage_help">10秒間再生すると視聴として記録されます。視聴時間が長い順では、過去30日間の再生時間を合計します。</string>
 </resources>

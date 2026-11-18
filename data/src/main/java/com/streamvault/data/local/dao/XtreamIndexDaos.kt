@@ -127,6 +127,17 @@ abstract class XtreamContentIndexDao {
     )
     abstract suspend fun markRowsStaleForProviderAndType(providerId: Long, contentType: String): Int
 
+    @Query("""
+        UPDATE xtream_content_index SET stale_state = 'ACTIVE', error_state = NULL
+        WHERE provider_id = :providerId AND content_type = :contentType AND (
+            (:contentType = 'MOVIE' AND local_content_id IN
+                (SELECT id FROM movies WHERE provider_id = :providerId AND category_id = :categoryId)) OR
+            (:contentType = 'SERIES' AND local_content_id IN
+                (SELECT id FROM series WHERE provider_id = :providerId AND category_id = :categoryId))
+        )
+    """)
+    abstract suspend fun markCategoryRowsFresh(providerId: Long, contentType: String, categoryId: Long): Int
+
     @Query("DELETE FROM xtream_content_index WHERE provider_id = :providerId")
     abstract suspend fun deleteByProvider(providerId: Long): Int
 
@@ -238,6 +249,33 @@ abstract class XtreamContentIndexDao {
     @Transaction
     open suspend fun pruneOrphanLocalContentRows(): Int =
         pruneOrphanLiveRows() + pruneOrphanMovieRows() + pruneOrphanSeriesRows()
+
+    // Coverage uses indexed_at rather than stale_state so cached search results remain usable.
+    @Query("UPDATE xtream_content_index SET indexed_at = 0 WHERE provider_id = :providerId AND content_type = :contentType")
+    abstract suspend fun beginSnapshot(providerId: Long, contentType: String): Int
+
+    @Query("DELETE FROM xtream_content_index WHERE provider_id = :providerId AND content_type = :contentType AND indexed_at = 0")
+    protected abstract suspend fun deleteUnseenIndexRows(providerId: Long, contentType: String): Int
+
+    @Query("""DELETE FROM movies WHERE provider_id = :providerId AND CAST(stream_id AS TEXT) IN
+        (SELECT remote_id FROM xtream_content_index WHERE provider_id = :providerId AND content_type = 'MOVIE' AND indexed_at = 0)""")
+    protected abstract suspend fun deleteUnseenMovies(providerId: Long): Int
+
+    @Query("""DELETE FROM series WHERE provider_id = :providerId AND COALESCE(NULLIF(provider_series_id, ''), CAST(series_id AS TEXT)) IN
+        (SELECT remote_id FROM xtream_content_index WHERE provider_id = :providerId AND content_type = 'SERIES' AND indexed_at = 0)""")
+    protected abstract suspend fun deleteUnseenSeries(providerId: Long): Int
+
+    /** Only a complete successful snapshot may remove remotely deleted content. */
+    @Transaction
+    open suspend fun pruneCompletedSnapshot(providerId: Long, contentType: String): Int {
+        val deleted = when (contentType) {
+            "MOVIE" -> deleteUnseenMovies(providerId)
+            "SERIES" -> deleteUnseenSeries(providerId)
+            else -> error("Unsupported snapshot type")
+        }
+        deleteUnseenIndexRows(providerId, contentType)
+        return deleted
+    }
 
     @Transaction
     open suspend fun pruneStaleLocalContentRows(providerId: Long, contentType: String): Int {

@@ -40,6 +40,8 @@ private const val MAX_HLS_RANGE_BYTES = 32 * 1024 * 1024L
 private const val RECORDING_CAPTURE_TAG = "RecordingCapture"
 private val HLS_CONTENT_RANGE_PATTERN = Regex("""bytes\s+(\d+)-(\d+)/(?:\d+|\*)""", RegexOption.IGNORE_CASE)
 
+class UnexpectedRecordingStreamEndException : IOException()
+
 private fun checkRecordingResponse(response: okhttp3.Response, source: ResolvedRecordingSource) {
     if (response.isSuccessful) return
     if (response.code == 403) {
@@ -64,6 +66,7 @@ private fun isTransientFailure(error: Throwable): Boolean {
         error is java.net.SocketException ||
         error is java.net.ConnectException ||
         error is java.net.UnknownHostException ||
+        error is UnexpectedRecordingStreamEndException ||
         (error is IOException && ("timeout" in msg || "reset" in msg || "broken pipe" in msg))
 }
 
@@ -161,7 +164,13 @@ class TsPassThroughCaptureEngine @Inject constructor(
                                     throw IOException("Recording stream stalled — no data received for ${STALL_TIMEOUT_MS / 1000}s")
                                 }
                                 val read = input.read(buffer)
-                                if (read <= 0) break
+                                if (read < 0) {
+                                    if (System.currentTimeMillis() < scheduledEndMs) {
+                                        throw UnexpectedRecordingStreamEndException()
+                                    }
+                                    break
+                                }
+                                if (read == 0) continue
                                 lastDataAt = System.currentTimeMillis()
                                 sink.write(buffer, 0, read)
                                 reportBytes(read)
@@ -174,7 +183,10 @@ class TsPassThroughCaptureEngine @Inject constructor(
                     if (!isTransientFailure(e) || retryCount >= MAX_TRANSIENT_RETRIES) throw e
                     retryCount++
                     val backoff = RETRY_BACKOFF_BASE_MS * (1L shl (retryCount - 1).coerceAtMost(3))
-                    delay(backoff.coerceAtMost(scheduledEndMs - System.currentTimeMillis()).coerceAtLeast(0))
+                    val remainingMs = scheduledEndMs - System.currentTimeMillis()
+                    if (remainingMs <= 0L) break
+                    delay(backoff.coerceAtMost(remainingMs))
+                    if (backoff >= remainingMs) throw e
                 }
             }
         }
@@ -235,6 +247,7 @@ class HlsLiveCaptureEngine @Inject constructor(
                     }
                 }
                 var lastWrittenMapIdentity: String? = null
+                var sharedRecordingStarted = false
                 val byteRangeState = HlsByteRangeState()
                 var lastDataAt = System.currentTimeMillis()
                 while (kotlinx.coroutines.currentCoroutineContext().isActive && System.currentTimeMillis() < scheduledEndMs) {
@@ -322,6 +335,7 @@ class HlsLiveCaptureEngine @Inject constructor(
                             // Cache key bytes by URI so rotated keys are fetched once each
                             val keyCache = mutableMapOf<String, ByteArray>()
                             var newSegmentsThisRound = false
+                            val skippedBeforeStart = ArrayList<String>()
                             for (segment in playlist.segments) {
                                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
                                 val rangeIdentity = segment.byteRange?.let { "@${it.offset}:${it.length}" }.orEmpty()
@@ -336,7 +350,17 @@ class HlsLiveCaptureEngine @Inject constructor(
                                     segmentRangeLength
                                 )
                                 val bytes = if (activeCapture != null) {
-                                    capturedSegment?.bytes ?: break
+                                    if (capturedSegment == null) {
+                                        // The foreground player may already have downloaded the
+                                        // beginning of this live window before recording attached.
+                                        // Choose the first available post-attachment segment once;
+                                        // after writing starts, every missing segment must be awaited.
+                                        if (!sharedRecordingStarted) {
+                                            skippedBeforeStart += segmentIdentity
+                                            continue
+                                        } else break
+                                    }
+                                    capturedSegment.bytes
                                 } else {
                                     try {
                                         fetchBytes(segment.uri, headers, client, source, segment.byteRange)
@@ -416,6 +440,10 @@ class HlsLiveCaptureEngine @Inject constructor(
                                 }
                                 capturedMap?.let { activeCapture?.consume(it) }
                                 sink.write(payload)
+                                if (activeCapture != null && !sharedRecordingStarted) {
+                                    seenSegments.addAll(skippedBeforeStart)
+                                    sharedRecordingStarted = true
+                                }
                                 seenSegments += segmentIdentity
                                 capturedSegment?.let { activeCapture?.consume(it) }
                                 bytesWritten += payload.size
@@ -434,7 +462,12 @@ class HlsLiveCaptureEngine @Inject constructor(
                             }
                             sink.flush()
                             if (newSegmentsThisRound) retryCount = 0
-                            if (playlist.endList) break
+                            if (playlist.endList) {
+                                if (System.currentTimeMillis() < scheduledEndMs) {
+                                    throw UnexpectedRecordingStreamEndException()
+                                }
+                                break
+                            }
                             delay((playlist.targetDurationSeconds.coerceAtLeast(2) * 1000L) / 2L)
                         }
                     }

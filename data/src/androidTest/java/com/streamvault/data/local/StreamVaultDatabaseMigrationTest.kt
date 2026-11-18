@@ -1,6 +1,7 @@
 package com.streamvault.data.local
 
 import android.database.Cursor
+import android.os.Build
 import androidx.room.testing.MigrationTestHelper
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
@@ -9,6 +10,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -33,6 +35,11 @@ class StreamVaultDatabaseMigrationTest {
             (StreamVaultDatabaseMigrationRegistry.CURRENT_VERSION - 1 downTo 3).toList() + 1
 
         exportedHistoricalVersions.forEach { startVersion ->
+            // Schema v88 was exported with remove_diacritics=2, which only exists in SQLite
+            // 3.27+ (API 30+). A v88 database could never be created on older platforms.
+            if (startVersion == 88 && Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                return@forEach
+            }
             val databaseName = "streamvault-every-schema-$startVersion"
             migrationTestHelper.createDatabase(databaseName, startVersion).close()
             val pathToCurrent = StreamVaultDatabaseMigrationRegistry.all
@@ -49,6 +56,132 @@ class StreamVaultDatabaseMigrationTest {
                 throw AssertionError("Migration failed from exported schema v$startVersion", error)
             }
         }
+    }
+
+    @Test
+    fun migrate91To92_assignsStableCombinedProfileIdentities() {
+        val databaseName = "streamvault-migrate-91-92-profile-identity"
+        val database = migrationTestHelper.createDatabase(databaseName, 91)
+        database.execSQL(
+            "INSERT INTO combined_m3u_profiles (id, name, enabled, created_at, updated_at) " +
+                "VALUES (9101, 'Family', 1, 10, 20)"
+        )
+        database.close()
+
+        val migrated = migrationTestHelper.runMigrationsAndValidate(
+            databaseName,
+            92,
+            true,
+            StreamVaultDatabase.MIGRATION_91_92
+        )
+        migrated.query("SELECT identity_key FROM combined_m3u_profiles WHERE id = 9101").use { cursor ->
+            assertEquals(true, cursor.moveToFirst())
+            assertTrue(cursor.getString(0).matches(Regex("combined-[0-9a-f]{32}")))
+            assertEquals(false, cursor.moveToNext())
+        }
+        migrated.close()
+    }
+
+    @Test
+    fun migrate92To93_assignsStableVirtualGroupIdentities() {
+        val databaseName = "streamvault-migrate-92-93-group-identity"
+        val database = migrationTestHelper.createDatabase(databaseName, 92)
+        database.execSQL(
+            "INSERT INTO providers (id, name, type, is_active, status, last_synced_at, created_at) " +
+                "VALUES (9301, 'Migration Provider', 'M3U', 1, 'ACTIVE', 0, 0)"
+        )
+        database.execSQL(
+            "INSERT INTO virtual_groups (id, provider_id, name, icon_emoji, position, created_at, content_type) " +
+                "VALUES (9302, 9301, 'News', NULL, 0, 10, 'LIVE')"
+        )
+        database.close()
+
+        val migrated = migrationTestHelper.runMigrationsAndValidate(
+            databaseName,
+            93,
+            true,
+            StreamVaultDatabaseMigrationRegistry.v92To93.single()
+        )
+        migrated.query("SELECT identity_key FROM virtual_groups WHERE id = 9302").use { cursor ->
+            assertEquals(true, cursor.moveToFirst())
+            val identity = cursor.getString(0)
+            assertEquals(true, identity.startsWith("group-"))
+            assertEquals(38, identity.length)
+            assertEquals(false, cursor.moveToNext())
+        }
+        migrated.close()
+    }
+
+    @Test
+    fun migrate89To90_preservesCatalogRowsAndAddsCatchUpMetadataColumns() {
+        val databaseName = "streamvault-migrate-89-90-catchup"
+        val database = migrationTestHelper.createDatabase(databaseName, 89)
+        database.execSQL(
+            """
+                INSERT INTO providers (id, name, type, is_active, status, last_synced_at, created_at)
+                VALUES (901, 'Migration Provider', 'M3U', 1, 'ACTIVE', 0, 0)
+            """.trimIndent()
+        )
+        database.execSQL(
+            """
+                INSERT INTO channels (
+                    stream_id, name, stream_url, number, catch_up_supported, catch_up_days,
+                    provider_id, is_adult, is_user_protected, logical_group_id, error_count, sync_fingerprint
+                ) VALUES (902, 'Archive Channel', 'https://example.invalid/live.ts', 1, 1, 3,
+                         901, 0, 0, '', 0, 'before-migration')
+            """.trimIndent()
+        )
+        database.execSQL(
+            """
+                INSERT INTO channel_import_stage (
+                    session_id, provider_id, stream_id, name, stream_url, number,
+                    catch_up_supported, catch_up_days, is_adult, logical_group_id, error_count, sync_fingerprint
+                ) VALUES (903, 901, 902, 'Archive Channel', 'https://example.invalid/live.ts', 1,
+                         1, 3, 0, '', 0, 'before-migration')
+            """.trimIndent()
+        )
+        database.close()
+
+        val migrated = migrationTestHelper.runMigrationsAndValidate(
+            databaseName,
+            90,
+            true,
+            StreamVaultDatabase.MIGRATION_89_90,
+            StreamVaultDatabase.MIGRATION_90_91
+        )
+
+        migrated.query("SELECT name FROM providers WHERE id = 901").use { cursor ->
+            assertEquals(true, cursor.moveToFirst())
+            assertEquals("Migration Provider", cursor.getString(0))
+            assertEquals(false, cursor.moveToNext())
+        }
+
+        migrated.query(
+            "SELECT catch_up_type, catch_up_correction_seconds FROM channels WHERE stream_id = 902"
+        ).use { cursor ->
+            assertEquals(true, cursor.moveToFirst())
+            assertEquals(null, cursor.getString(0))
+            assertEquals(0, cursor.getInt(1))
+        }
+        migrated.query(
+            "SELECT catch_up_type, catch_up_correction_seconds FROM channel_import_stage WHERE stream_id = 902"
+        ).use { cursor ->
+            assertEquals(true, cursor.moveToFirst())
+            assertEquals(null, cursor.getString(0))
+            assertEquals(0, cursor.getInt(1))
+        }
+
+        migrated.execSQL(
+            "UPDATE channels SET catch_up_type = 'append', catch_up_correction_seconds = -14400 WHERE stream_id = 902"
+        )
+        migrated.query(
+            "SELECT catch_up_type, catch_up_correction_seconds FROM channels WHERE stream_id = 902"
+        ).use { cursor ->
+            assertEquals(true, cursor.moveToFirst())
+            assertEquals("append", cursor.getString(0))
+            assertEquals(-14_400, cursor.getInt(1))
+        }
+        migrated.close()
     }
 
     @Test

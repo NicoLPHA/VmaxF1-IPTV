@@ -313,6 +313,13 @@
     <string name="settings_status_expired">Wygasło</string>
     <string name="settings_status_disabled">Niepełnosprawny</string>
     <string name="settings_status_unknown">Nieznany</string>
+    <string name="settings_provider_connection_online">Online</string>
+    <string name="settings_provider_connection_unavailable">Niedostępny</string>
+    <string name="settings_provider_connection_checking">Sprawdzanie…</string>
+    <string name="settings_provider_connection_check_now">Sprawdź teraz</string>
+    <string name="settings_provider_connection_last_checked">Ostatnio sprawdzono</string>
+    <string name="settings_provider_connection_authentication_required">Wymagane logowanie</string>
+    <string name="settings_provider_connection_unknown">Nieznany</string>
     <string name="settings_select_level">Wybierz Poziom ochrony</string>
     <string name="settings_level_off_desc">WYŁ. — Brak ograniczeń</string>
     <string name="settings_level_off_subtitle">Treści dla dorosłych są widoczne wszędzie.</string>
@@ -947,4 +954,31 @@
     <string name="settings_sports_custom_definition_file_error">Nie można wczytać tego pliku JSON</string>
     <string name="settings_experimental_badge">Eksperymentalne</string>
     <string name="settings_sync_index_progress">%1$s · %2$s</string>
+    <string name="settings_refresh_rate_matching">Dopasuj do liczby klatek treści</string>
+    <string name="settings_refresh_rate_matching_description">Dopasowuje częstotliwość odświeżania ekranu do filmu, aby ruch był płynniejszy. Wymaga obsługi przez ekran; podczas zmiany ekran może na chwilę zgasnąć.</string>
+    <string name="settings_epg_phone_qr_start">Pokaż kod QR</string>
+    <string name="settings_epg_phone_qr_stop">Zatrzymaj parowanie</string>
+    <string name="settings_epg_phone_qr_warning">Bezpieczeństwo: Parowanie wysyła dane logowania bez szyfrowania przez sieć lokalną. Korzystaj tylko z zaufanej, prywatnej sieci Wi-Fi.</string>
+    <string name="settings_epg_phone_qr_complete">Dodano</string>
+    <string name="settings_epg_phone_qr_error">Błąd</string>
+    <string name="settings_backup_export_sections">Wybierz sekcje do eksportu</string>
+    <string name="settings_m3u_catchup_query_format">Format zapytania odtwarzania archiwum</string>
+    <string name="settings_m3u_catchup_query_format_subtitle">Używany dla kanałów M3U bez własnego źródła archiwum. Pozostaw puste, aby wyłączyć ten format zastępczy. Przykład: ?utc={utc}</string>
+    <string name="settings_m3u_catchup_query_format_disabled">Wyłączone</string>
+    <string name="trakt_browser_sign_in">Zaloguj się w przeglądarce</string>
+    <string name="trakt_phone_sign_in">Zatwierdź na innym urządzeniu</string>
+    <string name="trakt_device_instructions">Zeskanuj kod QR lub otwórz %1$s na telefonie. Wpisz poniższy kod i zatwierdź dostęp. Ten ekran połączy się automatycznie. Jeśli kod wygaśnie, anuluj i spróbuj ponownie.</string>
+    <string name="settings_text_size">Rozmiar tekstu</string>
+    <string name="settings_text_size_default">Domyślny (100%)</string>
+    <string name="settings_text_size_system">Zgodnie z urządzeniem</string>
+    <string name="settings_text_size_custom">Niestandardowy</string>
+    <string name="settings_privacy_policy">Polityka prywatności</string>
+    <string name="settings_category_reorder_channels">Zmień kolejność kanałów</string>
+    <string name="settings_category_sort_manual">Ręcznie</string>
+    <string name="settings_category_reorder_categories">Zmień kolejność kategorii</string>
+    <string name="settings_default_live_channel_order">Domyślna kolejność kanałów</string>
+    <string name="settings_live_order_save_failed">Nie udało się zapisać kolejności kanałów. Spróbuj ponownie.</string>
+    <string name="settings_live_order_recent">Ostatnio oglądane</string>
+    <string name="settings_live_order_most">Najczęściej oglądane</string>
+    <string name="settings_live_order_usage_help">Oglądanie liczy się po 10 sekundach odtwarzania. Najczęściej oglądane sumuje czas odtwarzania z ostatnich 30 dni.</string>
 </resources>

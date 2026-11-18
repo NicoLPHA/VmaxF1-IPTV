@@ -241,15 +241,32 @@ class ProviderSyncWorker(
                         onboardingDao = entryPoint.xtreamLiveOnboardingDao()
                     )
                     val result = if (requestedProviderId == provider.id) {
-                        entryPoint.syncCommands().resumePrimaryCatalog(
-                            provider.id,
-                            trackInitialLiveOnboarding = trackInitialLiveOnboarding
-                        )
+                        if (inputData.getBoolean(KEY_STALKER_BOOTSTRAP_RESUME, false)) {
+                            entryPoint.syncCommands().resumeStalkerBootstrap(provider.id)
+                        } else {
+                            entryPoint.syncCommands().resumePrimaryCatalog(
+                                provider.id,
+                                trackInitialLiveOnboarding = trackInitialLiveOnboarding
+                            )
+                        }
                     } else if (trackInitialLiveOnboarding) {
                         // Interrupted setup is recovery, independent of automatic refresh policy.
                         entryPoint.syncCommands().resumePrimaryCatalog(provider.id, true)
                     } else {
-                        entryPoint.automaticSyncRunner().check(provider.id)
+                        try {
+                            entryPoint.automaticSyncRunner().check(provider.id)
+                        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                            // The pipeline cancels/joins its own reader and writer before this
+                            // control signal arrives. External worker cancellation stays cancellation.
+                            kotlinx.coroutines.currentCoroutineContext().let { context ->
+                                if (!context[kotlinx.coroutines.Job]!!.isActive) throw cancelled
+                            }
+                            if (!cancelled.isXtreamLivePlaybackDeferral()) throw cancelled
+                            entryPoint.automaticSyncRunner().reportIndexWaiting(provider.id,
+                                com.streamvault.domain.sync.AutomaticSyncOutcome.WAITING_PLAYBACK)
+                            Log.i(TAG, "Automatic bulk live catalog yielded before commit")
+                            return@execute ProviderWorkflowOutcome.Deferred
+                        }
                     }
                     if (requestedProviderId != provider.id && entryPoint.automaticSyncRunner().retryCheck(provider.id)) sawRetryableFailure = true
                     if (requestedProviderId == provider.id || (trackInitialLiveOnboarding && !provider.isActive)) {
@@ -538,6 +555,7 @@ class ProviderSyncWorker(
         private const val UNIQUE_LAUNCH_STALE_WORK_NAME = "provider-sync-launch-stale-check"
         private const val KEY_PROVIDER_ID = "provider_id"
         private const val KEY_PROVIDER_CONFIG_REVISION = "provider_config_revision"
+        private const val KEY_STALKER_BOOTSTRAP_RESUME = "stalker_bootstrap_resume"
         private const val INVALID_PROVIDER_ID = -1L
         private const val INVALID_REVISION = -1L
         private const val STALE_CONFIG_SYNC_MILLIS = 60_000L
@@ -621,6 +639,35 @@ class ProviderSyncWorker(
         fun enqueueProvider(context: Context, providerId: Long) {
             val request = OneTimeWorkRequestBuilder<ProviderSyncWorker>()
                 .setInputData(workDataOf(KEY_PROVIDER_ID to providerId))
+                .setConstraints(
+                    Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .setRequiresBatteryNotLow(true)
+                        .build()
+                )
+                .setBackoffCriteria(
+                    BackoffPolicy.EXPONENTIAL,
+                    WorkRequest.MIN_BACKOFF_MILLIS,
+                    TimeUnit.MILLISECONDS
+                )
+                .build()
+
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                providerWorkUniqueName(providerId),
+                providerWorkExistingPolicy(supersede = false),
+                request
+            )
+        }
+
+        fun enqueueStalkerBootstrapResume(context: Context, providerId: Long) {
+            if (providerId <= 0L) return
+            val request = OneTimeWorkRequestBuilder<ProviderSyncWorker>()
+                .setInputData(
+                    workDataOf(
+                        KEY_PROVIDER_ID to providerId,
+                        KEY_STALKER_BOOTSTRAP_RESUME to true
+                    )
+                )
                 .setConstraints(
                     Constraints.Builder()
                         .setRequiredNetworkType(NetworkType.CONNECTED)

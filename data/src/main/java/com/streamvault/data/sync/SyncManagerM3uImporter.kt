@@ -35,7 +35,25 @@ import java.net.URI
 import java.util.zip.GZIPInputStream
 
 private const val M3U_PROGRESS_INTERVAL = 5_000
+private const val M3U_SERIES_RECONCILIATION_PAGE_SIZE = 2_048
+private const val M3U_MAX_SERIES_CATEGORY_QUERY_IDS = 900
 private const val M3U_IMPORTER_TAG = "SyncManagerM3u"
+
+private fun sanitizeCatchUpSource(source: String?, catchUpType: String?): String? {
+    val value = source?.trim().orEmpty()
+    if (value.isEmpty() || value.length > 8_192) return null
+    if (value.any { it == '\r' || it == '\n' || it == '\t' }) return null
+
+    // Append-mode sources are query fragments, not standalone URLs. Preserve them after
+    // validating that they cannot inject another scheme or a control separator.
+    if (value.startsWith('?') || value.startsWith('&')) {
+        val mode = catchUpType?.trim()?.lowercase().orEmpty()
+        return value.takeIf { mode.isEmpty() || mode in setOf("default", "append", "shift", "timeshift") }
+    }
+
+    val validationValue = value.replace(Regex("\\$?\\{[^}]{1,64}\\}"), "catchup-token")
+    return value.takeIf { UrlSecurityPolicy.isAllowedStreamEntryUrl(validationValue) }
+}
 
 internal class SyncManagerM3uImporter(
     private val m3uParser: M3uParser,
@@ -80,9 +98,7 @@ internal class SyncManagerM3uImporter(
         val movieCategories = CategoryAccumulator(provider.id, ContentType.MOVIE, stableLongHasher)
         val channelBatch = ArrayList<ChannelEntity>(batchSize)
         val movieBatch = ArrayList<MovieEntity>(batchSize)
-        val seenLiveStreamIds = if (includeLive) mutableSetOf<Long>() else null
-        val seenMovieStreamIds = if (includeMovies) mutableSetOf<Long>() else null
-        val seriesToReconcile = mutableListOf<Pair<Long, M3uSeriesAssignment?>>()
+        val seriesCategoryIds = mutableSetOf<Long>()
         val persistedOverrides = classificationDao?.getOverrides(provider.id).orEmpty()
         val itemOverrides = persistedOverrides.associateBy { it.sourceKey }
         // A movie that was automatically classified before the override tables existed may
@@ -156,6 +172,7 @@ internal class SyncManagerM3uImporter(
                                 entry.tvgLanguage,
                                 entry.tvgCountry,
                                 entry.catchUp,
+                                entry.catchUpType,
                                 entry.catchUpSource,
                                 entry.timeshift,
                                 entry.url,
@@ -188,7 +205,7 @@ internal class SyncManagerM3uImporter(
                         }
 
                         val safeLogoUrl = UrlSecurityPolicy.sanitizeImportedAssetUrl(entry.tvgLogo)
-                        val safeCatchUpSource = UrlSecurityPolicy.sanitizeImportedAssetUrl(entry.catchUpSource)
+                        val safeCatchUpSource = sanitizeCatchUpSource(entry.catchUpSource, entry.catchUpType)
                         val playbackMetadataJson = entry.playbackMetadata?.let(M3uPlaybackMetadataCodec::encode)
 
                         val sourceKey = M3uSourceIdentity.fromEntry(provider.id, entry)
@@ -202,8 +219,8 @@ internal class SyncManagerM3uImporter(
                             val groupTitle = entry.groupTitle.ifBlank { "Uncategorized" }
                             val stableStreamId = override?.streamId
                                 ?: sourceStableId
-                            if (seenLiveStreamIds?.add(stableStreamId) != true) return@parseStreaming
                             val categoryId = liveCategories.idFor(groupTitle)
+                            if (classificationRepository != null) seriesCategoryIds += categoryId
                             channelBatch.add(
                                 ChannelEntity(
                                     streamId = stableStreamId,
@@ -220,14 +237,16 @@ internal class SyncManagerM3uImporter(
                                         !entry.timeshift.isNullOrBlank(),
                                     catchUpDays = entry.catchUpDays ?: 0,
                                     catchUpSource = safeCatchUpSource,
+                                    catchUpType = entry.catchUpType,
+                                    catchUpCorrectionSeconds = entry.catchUpCorrectionSeconds,
                                     providerId = provider.id,
                                     isAdult = AdultContentClassifier.isAdultCategoryName(groupTitle),
                                     playbackMetadataJson = playbackMetadataJson
                                 )
                             )
-                            seriesToReconcile += stableStreamId to override?.toSeriesAssignment()
-                            liveCount++
-                            if (channelBatch.size >= batchSize) flushChannelBatch(provider.id, sessionId, channelBatch)
+                            if (channelBatch.size >= batchSize) {
+                                liveCount += flushChannelBatch(provider.id, sessionId, channelBatch)
+                            }
                             return@parseStreaming
                         }
 
@@ -249,8 +268,6 @@ internal class SyncManagerM3uImporter(
                             }
                             val stableStreamId = override?.streamId
                                 ?: sourceStableId
-                            if (seenMovieStreamIds?.add(stableStreamId) != true) return@parseStreaming
-                            if (movieCount >= sizeLimits.maxMoviesPerProvider) throw CatalogAdmissionExceeded("M3U movie limit exceeded")
                             val categoryId = if (manualTarget == M3uClassificationTarget.MOVIE) {
                                 manualCategoryId(provider.id, ContentType.MOVIE, stableLongHasher)
                             } else {
@@ -277,17 +294,14 @@ internal class SyncManagerM3uImporter(
                                     playbackMetadataJson = playbackMetadataJson
                                 )
                             )
-                            movieCount++
                             if (movieBatch.size >= batchSize) {
-                                flushMovieBatch(provider.id, sessionId, movieBatch)
+                                movieCount += flushMovieBatch(provider.id, sessionId, movieBatch)
                             }
                         } else {
                             if (!includeLive) return@parseStreaming
                             val groupTitle = entry.groupTitle.ifBlank { "Uncategorized" }
                             val stableStreamId = override?.streamId
                                 ?: sourceStableId
-                            if (seenLiveStreamIds?.add(stableStreamId) != true) return@parseStreaming
-                            if (liveCount >= sizeLimits.maxChannelsPerProvider) throw CatalogAdmissionExceeded("M3U live-channel limit exceeded")
                             val categoryId = liveCategories.idFor(groupTitle)
                             if (liveCategories.count > sizeLimits.maxM3uCategoriesPerType) throw CatalogAdmissionExceeded("M3U live category limit exceeded")
                             val isAdult = AdultContentClassifier.isAdultCategoryName(groupTitle)
@@ -307,14 +321,15 @@ internal class SyncManagerM3uImporter(
                                         !entry.timeshift.isNullOrBlank(),
                                     catchUpDays = entry.catchUpDays ?: 0,
                                     catchUpSource = safeCatchUpSource,
+                                    catchUpType = entry.catchUpType,
+                                    catchUpCorrectionSeconds = entry.catchUpCorrectionSeconds,
                                     providerId = provider.id,
                                     isAdult = isAdult,
                                     playbackMetadataJson = playbackMetadataJson
                                 )
                             )
-                            liveCount++
                             if (channelBatch.size >= batchSize) {
-                                flushChannelBatch(provider.id, sessionId, channelBatch)
+                                liveCount += flushChannelBatch(provider.id, sessionId, channelBatch)
                             }
                         }
                         },
@@ -327,8 +342,8 @@ internal class SyncManagerM3uImporter(
                 }
             }
 
-            flushChannelBatch(provider.id, sessionId, channelBatch)
-            flushMovieBatch(provider.id, sessionId, movieBatch)
+            liveCount += flushChannelBatch(provider.id, sessionId, channelBatch)
+            movieCount += flushMovieBatch(provider.id, sessionId, movieBatch)
             // Only commit a section if it produced at least one entry. Committing an
             // empty stage with includeLive=true runs stale deletion and wipes the entire
             // live-TV catalog — even though the absence of entries may reflect a server
@@ -348,18 +363,40 @@ internal class SyncManagerM3uImporter(
                 includeMovies = effectiveMovies,
                 afterCatalogApply = afterCatalogApply
             )
-            if (classificationRepository != null) {
-                seriesToReconcile.forEach { (streamId, assignment) ->
-                    when (val result = classificationRepository.classifyChannelByStream(
-                        provider.id,
-                        streamId,
-                        M3uClassificationTarget.SERIES,
-                        assignment
-                    )) {
-                        is com.streamvault.domain.model.Result.Error ->
-                            warnings += result.message
-                        else -> Unit
+            if (classificationRepository != null && seriesCategoryIds.isNotEmpty()) {
+                val categoryFilter = seriesCategoryIds.toList()
+                    .takeIf { it.size <= M3U_MAX_SERIES_CATEGORY_QUERY_IDS }
+                var afterRowId: Long? = null
+                while (true) {
+                    val stagedChannels = syncCatalogStore.m3uChannelStagePage(
+                        providerId = provider.id,
+                        sessionId = sessionId,
+                        afterRowId = afterRowId,
+                        categoryIds = categoryFilter,
+                        limit = M3U_SERIES_RECONCILIATION_PAGE_SIZE
+                    )
+                    if (stagedChannels.isEmpty()) break
+                    stagedChannels.forEach { stagedChannel ->
+                        val override = itemOverridesByStreamId[stagedChannel.streamId]
+                        val shouldReconcile = if (override != null) {
+                            override.targetType == M3uClassificationTarget.SERIES.name
+                        } else {
+                            stagedChannel.categoryId in seriesCategoryIds
+                        }
+                        if (shouldReconcile) {
+                            when (val result = classificationRepository.classifyChannelByStream(
+                                provider.id,
+                                stagedChannel.streamId,
+                                M3uClassificationTarget.SERIES,
+                                override?.toSeriesAssignment()
+                            )) {
+                                is com.streamvault.domain.model.Result.Error ->
+                                    warnings += result.message
+                                else -> Unit
+                            }
+                        }
                     }
+                    afterRowId = stagedChannels.last().rowId
                 }
             }
         } finally {
@@ -458,16 +495,18 @@ internal class SyncManagerM3uImporter(
         }
     }
 
-    private suspend fun flushChannelBatch(providerId: Long, sessionId: Long, batch: MutableList<ChannelEntity>) {
-        if (batch.isEmpty()) return
-        syncCatalogStore.stageChannelBatch(providerId, sessionId, batch)
+    private suspend fun flushChannelBatch(providerId: Long, sessionId: Long, batch: MutableList<ChannelEntity>): Int {
+        if (batch.isEmpty()) return 0
+        val insertedCount = syncCatalogStore.stageM3uChannelBatch(providerId, sessionId, batch)
         batch.clear()
+        return insertedCount
     }
 
-    private suspend fun flushMovieBatch(providerId: Long, sessionId: Long, batch: MutableList<MovieEntity>) {
-        if (batch.isEmpty()) return
-        syncCatalogStore.stageMovieBatch(providerId, sessionId, batch)
+    private suspend fun flushMovieBatch(providerId: Long, sessionId: Long, batch: MutableList<MovieEntity>): Int {
+        if (batch.isEmpty()) return 0
+        val insertedCount = syncCatalogStore.stageM3uMovieBatch(providerId, sessionId, batch)
         batch.clear()
+        return insertedCount
     }
 
     private fun stableId(

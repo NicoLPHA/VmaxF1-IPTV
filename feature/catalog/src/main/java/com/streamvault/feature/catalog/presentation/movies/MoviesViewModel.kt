@@ -19,6 +19,7 @@ import com.streamvault.domain.model.PlaybackHistory
 import com.streamvault.domain.model.ProviderType
 import com.streamvault.domain.model.Result
 import com.streamvault.domain.model.VodCategoryHydrationRequest
+import com.streamvault.domain.util.SearchTextNormalizer
 import com.streamvault.domain.repository.FavoriteRepository
 import com.streamvault.domain.repository.MovieRepository
 import com.streamvault.domain.repository.PlaybackHistoryRepository
@@ -506,6 +507,11 @@ class MoviesViewModel @Inject constructor(
                         SelectedMovieCategoryRequest(
                             providerId = provider.id,
                             selectedCategory = selection.selectedCategory,
+                            selectedProviderCategoryItemCount = if (provider.type == ProviderType.STALKER_PORTAL) {
+                                dependencies.providerCategories.firstOrNull { it.name == selection.selectedCategory }?.id
+                                    ?.let { dependencies.providerCategoryCounts[it] ?: dependencies.providerCategoryCounts.values.sum() }
+                                    ?: dependencies.providerCategoryCounts.values.sum()
+                            } else 0,
                             loadLimit = selection.loadLimit,
                             query = selection.query,
                             filterType = selection.filterType,
@@ -1544,14 +1550,14 @@ class MoviesViewModel @Inject constructor(
         sortBy: LibrarySortBy,
         query: String
     ): List<Movie> {
-        val normalizedQuery = query.trim().lowercase()
+        val normalizedQuery = SearchTextNormalizer.normalize(query.trim())
         val searched = if (normalizedQuery.isBlank()) {
             items
         } else {
             items.filter { movie ->
-                movie.name.contains(normalizedQuery, ignoreCase = true) ||
-                    (movie.plot?.contains(normalizedQuery, ignoreCase = true) == true) ||
-                    (movie.genre?.contains(normalizedQuery, ignoreCase = true) == true)
+                SearchTextNormalizer.normalize(movie.name).contains(normalizedQuery) ||
+                    (movie.plot?.let { SearchTextNormalizer.normalize(it).contains(normalizedQuery) } == true) ||
+                    (movie.genre?.let { SearchTextNormalizer.normalize(it).contains(normalizedQuery) } == true)
             }
         }
         val filtered = when (filterType) {
@@ -1641,6 +1647,7 @@ private data class MovieCategorySelectionDependencies(
 private data class SelectedMovieCategoryRequest(
     val providerId: Long,
     val selectedCategory: String?,
+    val selectedProviderCategoryItemCount: Int,
     val loadLimit: Int,
     val query: String,
     val filterType: LibraryFilterType,

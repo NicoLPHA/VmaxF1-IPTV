@@ -27,7 +27,7 @@ import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
+import com.streamvault.core.ui.components.dialogs.AppDialog as Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -147,7 +147,9 @@ internal fun SportsInclusionsDialog(
     onDismiss: () -> Unit,
 ) {
     var leagueQuery by remember { mutableStateOf("") }
-    val leagues = (state.excludedLeagues.associateWith { it } + state.knownLeagues).entries
+    val localizedLeagueNames = sportsLeagueLabels()
+    val leagues = (state.excludedLeagues.associateWith { it } + state.knownLeagues)
+        .mapValues { (id, name) -> localizedLeagueNames[id] ?: name }.entries
         .filter { SportsTextNormalizer.normalize(it.value).contains(SportsTextNormalizer.normalize(leagueQuery)) }
         .sortedBy { it.value }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {

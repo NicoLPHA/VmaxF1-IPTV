@@ -318,6 +318,13 @@
     <string name="settings_status_expired">פג תוקף</string>
     <string name="settings_status_disabled">מושבת</string>
     <string name="settings_status_unknown">לא ידוע</string>
+    <string name="settings_provider_connection_online">מחובר</string>
+    <string name="settings_provider_connection_unavailable">לא זמין</string>
+    <string name="settings_provider_connection_checking">בבדיקה…</string>
+    <string name="settings_provider_connection_check_now">בדוק עכשיו</string>
+    <string name="settings_provider_connection_last_checked">נבדק לאחרונה</string>
+    <string name="settings_provider_connection_authentication_required">נדרשת התחברות</string>
+    <string name="settings_provider_connection_unknown">לא ידוע</string>
     <string name="settings_select_level">בחר רמת הגנה</string>
     <string name="settings_level_off_desc">כבוי - אין הגבלות</string>
     <string name="settings_level_off_subtitle">תוכן למבוגרים מופיע בכל מקום.</string>
@@ -944,4 +951,31 @@
     <string name="settings_sports_custom_definition_file_error">לא ניתן לטעון את קובץ ה-JSON הזה</string>
     <string name="settings_experimental_badge">ניסיוני</string>
     <string name="settings_sync_index_progress">%1$s · %2$s</string>
+    <string name="settings_refresh_rate_matching">התאמת קצב הרענון לתוכן</string>
+    <string name="settings_refresh_rate_matching_description">התאמת קצב הרענון של המסך לסרטון לתנועה חלקה יותר. נדרשת תמיכה במסך; בעת המעבר המסך עשוי להחשיך לזמן קצר.</string>
+    <string name="settings_epg_phone_qr_start">הצג קוד QR</string>
+    <string name="settings_epg_phone_qr_stop">עצור התאמה</string>
+    <string name="settings_epg_phone_qr_warning">אבטחה: הצימוד שולח פרטי התחברות ללא הצפנה דרך הרשת המקומית. יש להשתמש רק ברשת Wi-Fi פרטית ומהימנה.</string>
+    <string name="settings_epg_phone_qr_complete">נוסף</string>
+    <string name="settings_epg_phone_qr_error">שגיאה</string>
+    <string name="settings_backup_export_sections">בחרו אילו חלקים לייצא</string>
+    <string name="settings_m3u_catchup_query_format">תבנית שאילתת צפייה בארכיון</string>
+    <string name="settings_m3u_catchup_query_format_subtitle">משמשת לערוצי M3U ללא מקור צפייה בארכיון משלהם. יש להשאיר ריק כדי להשבית את תבנית הגיבוי הזו. לדוגמה: ?utc={utc}</string>
+    <string name="settings_m3u_catchup_query_format_disabled">מושבת</string>
+    <string name="trakt_browser_sign_in">כניסה באמצעות הדפדפן</string>
+    <string name="trakt_phone_sign_in">אישור במכשיר אחר</string>
+    <string name="trakt_device_instructions">סרקו את קוד ה־QR או פתחו את %1$s בטלפון. הזינו את הקוד שלמטה ואשרו גישה. המסך הזה יתחבר אוטומטית. אם תוקף הקוד פג, בטלו ונסו שוב.</string>
+    <string name="settings_text_size">גודל טקסט</string>
+    <string name="settings_text_size_default">ברירת מחדל (100%)</string>
+    <string name="settings_text_size_system">לפי הגדרות המכשיר</string>
+    <string name="settings_text_size_custom">מותאם אישית</string>
+    <string name="settings_privacy_policy">מדיניות פרטיות</string>
+    <string name="settings_category_reorder_channels">סדר מחדש את הערוצים</string>
+    <string name="settings_category_sort_manual">ידני</string>
+    <string name="settings_category_reorder_categories">שינוי סדר הקטגוריות</string>
+    <string name="settings_default_live_channel_order">סדר ערוצים כברירת מחדל</string>
+    <string name="settings_live_order_save_failed">לא ניתן לשמור את סדר הערוצים. נסו שוב.</string>
+    <string name="settings_live_order_recent">נצפו לאחרונה</string>
+    <string name="settings_live_order_most">הנצפים ביותר</string>
+    <string name="settings_live_order_usage_help">הצפייה נספרת לאחר 10 שניות ניגון. הנצפים ביותר מסכם את זמן הניגון ב־30 הימים האחרונים.</string>
 </resources>

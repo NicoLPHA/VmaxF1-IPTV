@@ -353,6 +353,13 @@
     <string name="settings_status_expired">Истечен</string>
     <string name="settings_status_disabled">Оневозможен</string>
     <string name="settings_status_unknown">Непознато</string>
+    <string name="settings_provider_connection_online">Онлајн</string>
+    <string name="settings_provider_connection_unavailable">Недостапен</string>
+    <string name="settings_provider_connection_checking">Се проверува…</string>
+    <string name="settings_provider_connection_check_now">Провери сега</string>
+    <string name="settings_provider_connection_last_checked">Последна проверка</string>
+    <string name="settings_provider_connection_authentication_required">Потребна е најава</string>
+    <string name="settings_provider_connection_unknown">Непознато</string>
     <string name="settings_select_level">Изберете ниво на заштита</string>
     <string name="settings_level_off_desc">ИСКЛУЧЕНО - Без ограничувања</string>
     <string name="settings_level_off_subtitle">Содржината за возрасни се појавува насекаде.</string>
@@ -939,4 +946,31 @@
     <string name="settings_sports_custom_definition_file_error">Оваа JSON-датотека не може да се вчита</string>
     <string name="settings_experimental_badge">Експериментално</string>
     <string name="settings_sync_index_progress">%1$s · %2$s</string>
+    <string name="settings_refresh_rate_matching">Усогласи со брзината на кадрите</string>
+    <string name="settings_refresh_rate_matching_description">Ја усогласува стапката на освежување на екранот со видеото за помазни движења. Потребна е поддршка од екранот; при префрлање екранот може накратко да се затемни.</string>
+    <string name="settings_epg_phone_qr_start">Прикажи QR код</string>
+    <string name="settings_epg_phone_qr_stop">Запрени го поврзувањето</string>
+    <string name="settings_epg_phone_qr_warning">Безбедност: Спарувањето ги испраќа податоците за најава нешифрирани преку локалната мрежа. Користете само доверлива приватна Wi-Fi мрежа.</string>
+    <string name="settings_epg_phone_qr_complete">Додадено</string>
+    <string name="settings_epg_phone_qr_error">Грешка</string>
+    <string name="settings_backup_export_sections">Изберете делови за извезување</string>
+    <string name="settings_m3u_catchup_query_format">Формат на барање за архивска репродукција</string>
+    <string name="settings_m3u_catchup_query_format_subtitle">Се користи за M3U канали без сопствен извор за архивска репродукција. Оставете празно за да го исклучите овој резервен формат. Пример: ?utc={utc}</string>
+    <string name="settings_m3u_catchup_query_format_disabled">Исклучено</string>
+    <string name="trakt_browser_sign_in">Најави се преку прелистувач</string>
+    <string name="trakt_phone_sign_in">Одобри на друг уред</string>
+    <string name="trakt_device_instructions">Скенирајте го QR-кодот или отворете %1$s на телефонот. Внесете го кодот подолу и одобрете пристап. Овој екран автоматски се поврзува. Ако кодот истече, откажете и обидете се повторно.</string>
+    <string name="settings_text_size">Големина на текстот</string>
+    <string name="settings_text_size_default">Стандардно (100%)</string>
+    <string name="settings_text_size_system">Според уредот</string>
+    <string name="settings_text_size_custom">Приспособено</string>
+    <string name="settings_privacy_policy">Политика за приватност</string>
+    <string name="settings_category_reorder_channels">Преуреди канали</string>
+    <string name="settings_category_sort_manual">Рачно</string>
+    <string name="settings_category_reorder_categories">Промени редослед на категории</string>
+    <string name="settings_default_live_channel_order">Стандарден редослед на каналите</string>
+    <string name="settings_live_order_save_failed">Редоследот на каналите не може да се зачува. Обидете се повторно.</string>
+    <string name="settings_live_order_recent">Неодамна гледани</string>
+    <string name="settings_live_order_most">Најгледани</string>
+    <string name="settings_live_order_usage_help">Гледањето се брои по 10 секунди репродукција. Најгледани го собира времето на репродукција во последните 30 дена.</string>
 </resources>

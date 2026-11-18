@@ -353,6 +353,13 @@
     <string name="settings_status_expired">Skaduar</string>
     <string name="settings_status_disabled">Çaktivizuar</string>
     <string name="settings_status_unknown">I panjohur</string>
+    <string name="settings_provider_connection_online">Në linjë</string>
+    <string name="settings_provider_connection_unavailable">I padisponueshëm</string>
+    <string name="settings_provider_connection_checking">Po kontrollohet…</string>
+    <string name="settings_provider_connection_check_now">Kontrollo tani</string>
+    <string name="settings_provider_connection_last_checked">Kontrolluar së fundmi</string>
+    <string name="settings_provider_connection_authentication_required">Kërkohet identifikimi</string>
+    <string name="settings_provider_connection_unknown">I panjohur</string>
     <string name="settings_select_level">Zgjidh nivelin e mbrojtjes</string>
     <string name="settings_level_off_desc">JOAKTIV - Pa kufizime</string>
     <string name="settings_level_off_subtitle">Përmbajtja për të rritur shfaqet kudo.</string>
@@ -939,4 +946,31 @@
     <string name="settings_sports_custom_definition_file_error">Ky skedar JSON nuk mund të ngarkohej</string>
     <string name="settings_experimental_badge">Eksperimentale</string>
     <string name="settings_sync_index_progress">%1$s · %2$s</string>
+    <string name="settings_refresh_rate_matching">Përshtat shpejtësinë e kuadrove të përmbajtjes</string>
+    <string name="settings_refresh_rate_matching_description">Përshtat ritmin e rifreskimit të ekranit me videon për lëvizje më të rrjedhshme. Kërkon mbështetje nga ekrani; gjatë ndërrimit ekrani mund të nxihet për pak çaste.</string>
+    <string name="settings_epg_phone_qr_start">Shfaq kodin QR</string>
+    <string name="settings_epg_phone_qr_stop">Ndalo çiftimin</string>
+    <string name="settings_epg_phone_qr_warning">Siguria: Çiftimi dërgon të dhënat e hyrjes pa enkriptim përmes rrjetit lokal. Përdor vetëm një rrjet privat Wi-Fi të besuar.</string>
+    <string name="settings_epg_phone_qr_complete">U shtua</string>
+    <string name="settings_epg_phone_qr_error">Gabim</string>
+    <string name="settings_backup_export_sections">Zgjidhni seksionet për eksport</string>
+    <string name="settings_m3u_catchup_query_format">Formati i kërkesës së riluajtjes nga arkivi</string>
+    <string name="settings_m3u_catchup_query_format_subtitle">Përdoret për kanalet M3U pa burimin e tyre të riluajtjes nga arkivi. Lëreni bosh për ta çaktivizuar këtë format rezervë. Shembull: ?utc={utc}</string>
+    <string name="settings_m3u_catchup_query_format_disabled">Joaktiv</string>
+    <string name="trakt_browser_sign_in">Hyr përmes shfletuesit</string>
+    <string name="trakt_phone_sign_in">Mirato në një pajisje tjetër</string>
+    <string name="trakt_device_instructions">Skanoni kodin QR ose hapni %1$s në telefon. Futni kodin më poshtë dhe miratoni qasjen. Ky ekran lidhet automatikisht. Nëse kodi skadon, anuloni dhe provoni përsëri.</string>
+    <string name="settings_text_size">Madhësia e tekstit</string>
+    <string name="settings_text_size_default">Parazgjedhja (100%)</string>
+    <string name="settings_text_size_system">Sipas pajisjes</string>
+    <string name="settings_text_size_custom">E personalizuar</string>
+    <string name="settings_privacy_policy">Politika e privatësisë</string>
+    <string name="settings_category_reorder_channels">Rirendit kanalet</string>
+    <string name="settings_category_sort_manual">Manualisht</string>
+    <string name="settings_category_reorder_categories">Rendit kategoritë</string>
+    <string name="settings_default_live_channel_order">Renditja e parazgjedhur e kanaleve</string>
+    <string name="settings_live_order_save_failed">Renditja e kanaleve nuk mund të ruhej. Provoni përsëri.</string>
+    <string name="settings_live_order_recent">Të shikuara së fundi</string>
+    <string name="settings_live_order_most">Më të shikuarat</string>
+    <string name="settings_live_order_usage_help">Shikimi llogaritet pas 10 sekondash riprodhim. Më të shikuarat mbledh kohën e riprodhimit gjatë 30 ditëve të fundit.</string>
 </resources>

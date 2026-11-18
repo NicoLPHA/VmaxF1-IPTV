@@ -29,10 +29,23 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class XtreamProviderTest {
+
+    @Test fun `malformed summaries cannot certify complete snapshot coverage`() = runTest {
+        val provider = XtreamProvider(providerId = 42,
+            api = FakeXtreamApiService(
+                vodStreams = listOf(vodStream("1"), vodStream("1").copy(streamId = 0)),
+                seriesList = listOf(XtreamSeriesItem(seriesId = 1, name = "Valid"),
+                    XtreamSeriesItem(seriesId = 0, name = "Invalid"))),
+            serverUrl = "https://example.com", username = "user", password = "pass")
+        assertThat(provider.streamVodSummaries(adultCategoryIds = emptySet()) { }).isInstanceOf(Result.Error::class.java)
+        assertThat(provider.streamSeriesSummaries(adultCategoryIds = emptySet()) { }).isInstanceOf(Result.Error::class.java)
+    }
 
     @Test
     fun `series compatibility fallback preserves cancellation and does not issue legacy request`() = runTest {
@@ -989,6 +1002,66 @@ class XtreamProviderTest {
         assertThat(series?.seriesId).isEqualTo(88L)
         assertThat(series?.seasons).hasSize(1)
         assertThat(series?.seasons?.first()?.episodes).hasSize(1)
+    }
+
+    @Test
+    fun `getSeriesInfo maps nested episode arrays into seasons`() {
+        runBlocking {
+            val json = Json {
+                ignoreUnknownKeys = true
+                isLenient = true
+                explicitNulls = false
+                coerceInputValues = true
+            }
+            val response = json.decodeFromString<XtreamSeriesInfoResponse>(
+                """
+                {
+                  "info": { "series_id": 88, "name": "Specials Series" },
+                  "episodes": [
+                    [ { "id": "1001", "episode_num": 1, "title": "Special", "container_extension": "mp4" } ],
+                    [ { "id": "2001", "episode_num": 1, "title": "Pilot", "container_extension": "mp4" } ]
+                  ]
+                }
+                """.trimIndent()
+            )
+            val provider = XtreamProvider(
+                providerId = 42,
+                api = FakeXtreamApiService(seriesInfo = response),
+                serverUrl = "https://example.com",
+                username = "user",
+                password = "pass"
+            )
+
+            val series = provider.getSeriesInfo(88).getOrNull()
+
+            assertThat(series?.seasons?.map { it.seasonNumber }).containsExactly(0, 1).inOrder()
+            assertThat(series?.seasons?.first { it.seasonNumber == 0 }?.episodes?.map { it.title })
+                .containsExactly("Special")
+            assertThat(series?.seasons?.first { it.seasonNumber == 1 }?.episodes?.map { it.title })
+                .containsExactly("Pilot")
+        }
+    }
+
+    @Test
+    fun `getSeriesInfo returns series without episodes for an info only payload`() {
+        runBlocking {
+            val provider = XtreamProvider(
+                providerId = 42,
+                api = FakeXtreamApiService(
+                    seriesInfo = XtreamSeriesInfoResponse(
+                        info = XtreamSeriesItem(name = "Info Only")
+                    )
+                ),
+                serverUrl = "https://example.com",
+                username = "user",
+                password = "pass"
+            )
+
+            val series = provider.getSeriesInfo(88).getOrNull()
+
+            assertThat(series?.name).isEqualTo("Info Only")
+            assertThat(series?.seasons).isEmpty()
+        }
     }
 
     @Test

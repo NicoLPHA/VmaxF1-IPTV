@@ -26,6 +26,7 @@ import com.streamvault.domain.model.*
 import com.streamvault.domain.model.LegacyProvider as Provider
 import com.streamvault.domain.model.Result.Success
 import com.streamvault.domain.repository.PlaybackHistoryRepository
+import com.streamvault.domain.repository.SeriesDetailsUnavailableException
 import com.streamvault.domain.repository.SeriesRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -56,6 +57,7 @@ import com.streamvault.domain.provider.CapabilityResolution
 import com.streamvault.domain.provider.ProviderContentReference
 import com.streamvault.domain.util.KeyedMutexRegistry
 import com.streamvault.domain.util.BoundedKeySet
+import com.streamvault.domain.util.SearchTextNormalizer
 import javax.inject.Singleton
 
 @Singleton
@@ -84,6 +86,7 @@ class SeriesRepositoryImpl @Inject constructor(
         const val SEARCH_RESULT_LIMIT = 200
         const val SEARCH_OVERSAMPLE_LIMIT = 500
         const val MIN_SEARCH_QUERY_LENGTH = 2
+        const val SEARCH_FALLBACK_PAGE_SIZE = 512
         const val BROWSE_WINDOW_BUFFER = 80
         const val XTREAM_CATEGORY_HYDRATION_CONCURRENCY = 1
         const val XTREAM_EMPTY_CATEGORY_RETRY_COOLDOWN_MILLIS = 30_000L
@@ -93,7 +96,8 @@ class SeriesRepositoryImpl @Inject constructor(
         const val STALKER_INITIAL_CATEGORY_FILL_COUNT = 40
         const val STALKER_INITIAL_CATEGORY_MAX_REMOTE_PAGES = 4
         const val STALKER_COMPLETE_PAGE_BATCH_SIZE = 200
-        const val DETAIL_REFRESH_TTL_MILLIS = 14L * 24L * 60L * 60L * 1000L
+        const val XTREAM_DETAIL_REFRESH_TTL_MILLIS = 6L * 60L * 60L * 1000L
+        const val STALKER_DETAIL_REFRESH_TTL_MILLIS = 24L * 60L * 60L * 1000L
         const val XTREAM_DETAIL_HYDRATION_TIMEOUT_MILLIS = 8_000L
         const val CACHE_STATE_SUMMARY_ONLY = "SUMMARY_ONLY"
         const val CACHE_STATE_DETAIL_HYDRATED = "DETAIL_HYDRATED"
@@ -358,10 +362,11 @@ class SeriesRepositoryImpl @Inject constructor(
                 query.filterBy.type != LibraryFilterType.ALL ||
                 query.sortBy != LibrarySortBy.LIBRARY ||
                 preferencesRepository.vodDuplicateHandlingMode.first() != VodDuplicateHandlingMode.SHOW_ALL
-            if (requiresCompleteCategory) {
-                query.categoryId?.let {
-                    requestCategoryHydration(query.providerId, it, VodCategoryHydrationRequest.COMPLETE)
-                }
+            val browsingProvider = loadCompatibilityProvider(query.providerId)
+            if (browsingProvider?.type == ProviderType.STALKER_PORTAL) {
+                query.categoryId?.let { syncManager.prioritizeStalkerIndexCategory(query.providerId, ContentType.SERIES, it) }
+            } else if (requiresCompleteCategory) {
+                query.categoryId?.let { requestCategoryHydration(query.providerId, it, VodCategoryHydrationRequest.COMPLETE) }
             }
             query.categoryId
                 ?.takeIf { normalizedSearch.length < MIN_SEARCH_QUERY_LENGTH }
@@ -375,7 +380,10 @@ class SeriesRepositoryImpl @Inject constructor(
                         )
                     }
                 }
-            emit(fetchSeriesBrowseResult(query))
+            val browseQuery = if (browsingProvider?.type == ProviderType.STALKER_PORTAL &&
+                query.categoryId?.let { createStalkerProvider(query.providerId)?.isWildcardCategory(ContentType.SERIES, it) } == true
+            ) query.copy(categoryId = null) else query
+            emit(fetchSeriesBrowseResult(browseQuery))
         }.flowOn(Dispatchers.IO)
     }
 
@@ -406,10 +414,10 @@ class SeriesRepositoryImpl @Inject constructor(
     ): Result<Unit> {
         val provider = loadCompatibilityProvider(providerId) ?: return Result.error("Provider not found")
         if (provider.type != ProviderType.STALKER_PORTAL) return Result.success(Unit)
-        val mode = preferencesRepository.vodCategoryLoadMode.first()
-        val effectiveRequest = if (
-            request == VodCategoryHydrationRequest.OPEN && mode == VodCategoryLoadMode.COMPLETE_ON_OPEN
-        ) VodCategoryHydrationRequest.COMPLETE else request
+        syncManager.prioritizeStalkerIndexCategory(providerId, ContentType.SERIES, categoryId)
+        val effectiveRequest = if (request == VodCategoryHydrationRequest.COMPLETE) {
+            VodCategoryHydrationRequest.OPEN
+        } else request
         val current = seriesCategoryHydrationDao.get(providerId, categoryId)
         val requestedPage = if (effectiveRequest == VodCategoryHydrationRequest.NEXT_PAGE) {
             ((current?.lastSuccessfulPage ?: 0) + 1).coerceAtLeast(1)
@@ -439,17 +447,6 @@ class SeriesRepositoryImpl @Inject constructor(
         } else {
             Result.success(Unit)
         }
-        if (derivedResult is Result.Success && request == VodCategoryHydrationRequest.OPEN &&
-            mode == VodCategoryLoadMode.PAGED
-        ) {
-            repositoryScope.launch {
-                try {
-                    requestCategoryHydration(providerId, categoryId, VodCategoryHydrationRequest.NEXT_PAGE)
-                } catch (_: CredentialDecryptionException) {
-                    logUnreadableProviderCredentials(providerId)
-                }
-            }
-        }
         return derivedResult
     }
 
@@ -460,9 +457,7 @@ class SeriesRepositoryImpl @Inject constructor(
             } else combine(
                 safeSeriesSearchFlow(
                     source = seriesDao.search(providerId, ftsQuery, SEARCH_RESULT_LIMIT),
-                    fallback = {
-                        seriesDao.searchFallback(providerId, query.trim().toSqlLikePattern(), SEARCH_RESULT_LIMIT)
-                    },
+                    fallback = { fallbackSeriesSearch(providerId, query.trim(), SEARCH_RESULT_LIMIT) },
                     rawQuery = query.trim()
                 ),
                 preferencesRepository.parentalControlLevel
@@ -537,10 +532,9 @@ class SeriesRepositoryImpl @Inject constructor(
         if (provider.type == ProviderType.STALKER_PORTAL && seriesEntity.hasFreshStalkerDetails()) {
             val localSeries = buildSeriesWithPersistedEpisodes(seriesEntity)
             // Older catalog-page REPLACE writes could cascade-delete the episodes
-            // while leaving the parent marked as freshly hydrated. A VOD-derived
-            // series with that impossible state must self-repair on the next open.
+            // while leaving the parent marked as freshly hydrated. Retry that empty
+            // episode list when the series is opened again.
             if (
-                seriesEntity.catalogOrigin != SeriesCatalogOrigin.VOD_DERIVED ||
                 localSeries.seasons.any { season -> season.episodes.isNotEmpty() }
             ) {
                 return Result.success(attachSeriesPresentation(localSeries, knownPresentation))
@@ -583,9 +577,13 @@ class SeriesRepositoryImpl @Inject constructor(
                     remoteId = seriesEntity.providerSeriesId?.takeIf { it.isNotBlank() } ?: seriesEntity.seriesId.toString(),
                     errorState = "DETAIL_FAILED_RETRYABLE"
                 )
-                return Result.success(attachSeriesPresentation(buildSeriesWithPersistedEpisodes(seriesEntity), knownPresentation))
             }
-            return Result.error(e.message ?: "Failed to access provider credentials", e)
+            return cachedSeriesOrError(
+                seriesEntity = seriesEntity,
+                knownPresentation = knownPresentation,
+                message = e.message ?: "Failed to load series details",
+                exception = e
+            )
         }
 
         return when (remoteResult) {
@@ -752,8 +750,12 @@ class SeriesRepositoryImpl @Inject constructor(
                         }
                     )
                 }
-                val localSeries = attachSeriesPresentation(buildSeriesWithPersistedEpisodes(seriesEntity), knownPresentation)
-                Result.success(localSeries)
+                cachedSeriesOrError(
+                    seriesEntity = seriesEntity,
+                    knownPresentation = knownPresentation,
+                    message = remoteResult.message,
+                    exception = remoteResult.exception
+                )
             }
             is Result.Loading -> Result.error("Unexpected loading state")
         }
@@ -791,6 +793,21 @@ class SeriesRepositoryImpl @Inject constructor(
 
     override suspend fun refreshSeries(providerId: Long): Result<Unit> =
         Result.success(Unit) // Handled by ProviderRepository
+
+    private suspend fun cachedSeriesOrError(
+        seriesEntity: SeriesEntity,
+        knownPresentation: SeriesDetailPresentationHint?,
+        message: String,
+        exception: Throwable?
+    ): Result<Series> {
+        val localSeries = attachSeriesPresentation(buildSeriesWithPersistedEpisodes(seriesEntity), knownPresentation)
+        val hasEpisodes = localSeries.seasons.any { season -> season.episodes.isNotEmpty() }
+        return if (hasEpisodes) {
+            Result.success(localSeries)
+        } else {
+            Result.error(message, SeriesDetailsUnavailableException(message, exception))
+        }
+    }
 
     private suspend fun buildSeriesWithPersistedEpisodes(seriesEntity: SeriesEntity): Series {
         val episodes = episodeDao.getBySeriesSync(seriesEntity.id).map { it.toDomain() }
@@ -897,11 +914,11 @@ class SeriesRepositoryImpl @Inject constructor(
                         safeSeriesSearchFlow(
                             source = seriesDao.searchByCategory(query.providerId, categoryId, ftsQuery, SEARCH_OVERSAMPLE_LIMIT),
                             fallback = {
-                                seriesDao.searchByCategoryFallback(
+                                fallbackSeriesSearch(
                                     query.providerId,
-                                    categoryId,
-                                    normalizedSearch.toSqlLikePattern(),
-                                    SEARCH_OVERSAMPLE_LIMIT
+                                    normalizedSearch,
+                                    SEARCH_OVERSAMPLE_LIMIT,
+                                    categoryId
                                 )
                             },
                             rawQuery = normalizedSearch
@@ -1571,11 +1588,11 @@ class SeriesRepositoryImpl @Inject constructor(
     }
 
     private fun seriesMatchesSearch(series: Series, searchQuery: String): Boolean {
-        val normalizedQuery = searchQuery.trim().lowercase()
+        val normalizedQuery = SearchTextNormalizer.normalize(searchQuery.trim())
         if (normalizedQuery.isBlank()) return true
         return sequenceOf(series.name, series.genre, series.categoryName)
             .filterNotNull()
-            .any { value -> value.lowercase().contains(normalizedQuery) }
+            .any { value -> SearchTextNormalizer.normalize(value).contains(normalizedQuery) }
     }
 
     private fun safeSeriesSearchFlow(
@@ -1592,21 +1609,45 @@ class SeriesRepositoryImpl @Inject constructor(
                 }
             }
         } catch (error: SQLiteException) {
-            Log.w(TAG, "FTS series search failed for queryLength=${rawQuery.length}; using LIKE-only search", error)
+            Log.w(TAG, "FTS series search failed for queryLength=${rawQuery.length}; using normalized search fallback", error)
             emitAll(fallback())
         }
     }
 
-    private fun String.toSqlLikePattern(): String {
-        val escaped = buildString(length) {
-            this@toSqlLikePattern.forEach { char ->
-                when (char) {
-                    '%', '_', '\\' -> append('\\')
+    private fun fallbackSeriesSearch(
+        providerId: Long,
+        query: String,
+        limit: Int,
+        categoryId: Long? = null
+    ): Flow<List<SeriesBrowseEntity>> {
+        val foldedQuery = SearchTextNormalizer.normalize(query)
+        if (foldedQuery.isBlank() || limit <= 0) return flowOf(emptyList())
+
+        return flow {
+            val matches = sortedSetOf(compareBy<SeriesBrowseEntity> { it.name }.thenBy { it.id })
+            var offset = 0
+            while (true) {
+                val page = categoryId?.let {
+                    seriesDao.getByCategoryPage(providerId, it, SEARCH_FALLBACK_PAGE_SIZE, offset)
+                }?.first() ?: seriesDao.getByProviderPage(providerId, SEARCH_FALLBACK_PAGE_SIZE, offset).first()
+                if (page.isEmpty()) break
+
+                page.forEach { item ->
+                    val matchesQuery = sequenceOf(item.name, item.genre, item.categoryName)
+                        .filterNotNull()
+                        .any { SearchTextNormalizer.normalize(it).contains(foldedQuery) }
+                    if (matchesQuery) {
+                        matches += item
+                        if (matches.size > limit) matches.remove(matches.last())
+                    }
                 }
-                append(char)
+
+                offset += page.size
+                if (page.size < SEARCH_FALLBACK_PAGE_SIZE) break
             }
+
+            emit(matches.toList())
         }
-        return "%$escaped%"
     }
 
     private fun String.toSqlPrefixLikePattern(): String {
@@ -1715,6 +1756,7 @@ class SeriesRepositoryImpl @Inject constructor(
         requiredCount: Int,
         loadCompletely: Boolean = false
     ): Boolean {
+        if (localCount > 0) return false
         val now = System.currentTimeMillis()
         val hasEmptySuccessfulCheckpoint = localCount == 0 &&
             (hydration?.lastSuccessfulPage ?: hydration?.lastLoadedPage ?: 0) > 0
@@ -1953,7 +1995,7 @@ class SeriesRepositoryImpl @Inject constructor(
         if (cacheState == CACHE_STATE_SUMMARY_ONLY) return false
         if (detailHydratedAt <= 0L) return false
         if (remoteStaleAt > 0L) return false
-        if (ContentCachePolicy.shouldRefresh(detailHydratedAt, DETAIL_REFRESH_TTL_MILLIS, now)) return false
+        if (ContentCachePolicy.shouldRefresh(detailHydratedAt, XTREAM_DETAIL_REFRESH_TTL_MILLIS, now)) return false
         return true
     }
 
@@ -1987,7 +2029,7 @@ class SeriesRepositoryImpl @Inject constructor(
         if (cacheState != CACHE_STATE_DETAIL_HYDRATED) return false
         if (detailHydratedAt <= 0L) return false
         if (remoteStaleAt > 0L) return false
-        return !ContentCachePolicy.shouldRefresh(detailHydratedAt, DETAIL_REFRESH_TTL_MILLIS, now)
+        return !ContentCachePolicy.shouldRefresh(detailHydratedAt, STALKER_DETAIL_REFRESH_TTL_MILLIS, now)
     }
 
     private fun Provider.contentCapabilityGeneration(): Int = listOf(

@@ -349,6 +349,13 @@
     <string name="settings_status_expired">已过期</string>
     <string name="settings_status_disabled">已禁用</string>
     <string name="settings_status_unknown">未知</string>
+    <string name="settings_provider_connection_online">在线</string>
+    <string name="settings_provider_connection_unavailable">不可用</string>
+    <string name="settings_provider_connection_checking">正在检查…</string>
+    <string name="settings_provider_connection_check_now">立即检查</string>
+    <string name="settings_provider_connection_last_checked">上次检查</string>
+    <string name="settings_provider_connection_authentication_required">需要登录</string>
+    <string name="settings_provider_connection_unknown">未知</string>
     <string name="settings_select_level">选择保护级别</string>
     <string name="settings_level_off_desc">关闭 - 无限制</string>
     <string name="settings_level_off_subtitle">成人内容在所有位置显示。</string>
@@ -937,4 +944,31 @@
     <string name="settings_sports_custom_definition_file_error">无法加载此 JSON 文件</string>
     <string name="settings_experimental_badge">实验性</string>
     <string name="settings_sync_index_progress">%1$s · %2$s</string>
+    <string name="settings_refresh_rate_matching">匹配内容帧率</string>
+    <string name="settings_refresh_rate_matching_description">根据视频调整显示器刷新率，让运动画面更流畅。需要显示器支持；切换时屏幕可能会短暂变黑。</string>
+    <string name="settings_epg_phone_qr_start">显示二维码</string>
+    <string name="settings_epg_phone_qr_stop">停止配对</string>
+    <string name="settings_epg_phone_qr_warning">安全提示：配对会通过本地网络以未加密的方式发送登录凭据。请仅使用可信的私人 Wi-Fi 网络。</string>
+    <string name="settings_epg_phone_qr_complete">已添加</string>
+    <string name="settings_epg_phone_qr_error">错误</string>
+    <string name="settings_backup_export_sections">选择要导出的部分</string>
+    <string name="settings_m3u_catchup_query_format">回看查询格式</string>
+    <string name="settings_m3u_catchup_query_format_subtitle">用于没有专属回看源的 M3U 频道。留空可停用此备用格式。示例：?utc={utc}</string>
+    <string name="settings_m3u_catchup_query_format_disabled">已停用</string>
+    <string name="trakt_browser_sign_in">使用浏览器登录</string>
+    <string name="trakt_phone_sign_in">在其他设备上批准</string>
+    <string name="trakt_device_instructions">扫描二维码或在手机上打开 %1$s。输入下方代码并批准访问，此页面将自动连接。如果代码过期，请取消并重试。</string>
+    <string name="settings_text_size">文字大小</string>
+    <string name="settings_text_size_default">默认（100%）</string>
+    <string name="settings_text_size_system">跟随设备</string>
+    <string name="settings_text_size_custom">自定义</string>
+    <string name="settings_privacy_policy">隐私政策</string>
+    <string name="settings_category_reorder_channels">重新排序频道</string>
+    <string name="settings_category_sort_manual">手动</string>
+    <string name="settings_category_reorder_categories">重新排列分类</string>
+    <string name="settings_default_live_channel_order">默认频道顺序</string>
+    <string name="settings_live_order_save_failed">无法保存频道顺序。请重试。</string>
+    <string name="settings_live_order_recent">最近观看</string>
+    <string name="settings_live_order_most">观看最多</string>
+    <string name="settings_live_order_usage_help">播放满10秒后计入观看记录。观看最多会累计过去30天的播放时间。</string>
 </resources>

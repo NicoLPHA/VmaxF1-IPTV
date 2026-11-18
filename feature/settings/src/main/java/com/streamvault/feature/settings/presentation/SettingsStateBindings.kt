@@ -72,7 +72,7 @@ fun observeSettingsPreferenceSnapshot(
             centerTwoSlotMultiviewLayout = false,
             multiViewRespectProviderConnectionLimit = true,
             playerControlsTimeoutSeconds = 5,
-            playerLiveOverlayTimeoutSeconds = 4,
+            playerLiveOverlayTimeoutSeconds = 6,
             playerLiveClockEnabled = false,
             playerLiveClockPosition = com.streamvault.domain.model.LiveClockPosition.TOP_END,
             playerLiveClockSize = com.streamvault.domain.model.LiveClockSize.MEDIUM,
@@ -304,6 +304,8 @@ fun observeSettingsPreferenceSnapshot(
         snapshot.copy(vodVariantPreferenceMode = vodVariantPreferenceMode)
     }.combine(preferencesRepository.guideDefaultCategoryId) { snapshot, guideDefaultCategoryId ->
         snapshot.copy(guideDefaultCategoryId = guideDefaultCategoryId ?: VirtualCategoryIds.FAVORITES)
+    }.combine(preferencesRepository.playerRefreshRateMatchingEnabled) { snapshot, enabled ->
+        snapshot.copy(playerRefreshRateMatchingEnabled = enabled)
     }.combine(preferencesRepository.preventStandbyDuringPlayback) { snapshot, preventStandby ->
         snapshot.copy(preventStandbyDuringPlayback = preventStandby)
     }.combine(preferencesRepository.zapAutoRevert) { snapshot, zapAutoRevert ->

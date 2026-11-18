@@ -1,5 +1,6 @@
 package com.streamvault.feature.settings.presentation
 
+import com.streamvault.domain.model.AppTextSize
 import android.content.Context
 import android.content.Intent
 import androidx.activity.result.ActivityResultLauncher
@@ -53,6 +54,8 @@ import com.streamvault.domain.model.VodDuplicateHandlingMode
 import com.streamvault.domain.model.VodHttpProtocolMode
 import com.streamvault.domain.model.LegacyProvider as Provider
 import com.streamvault.domain.model.ProviderStatus
+import com.streamvault.domain.model.ProviderAvailabilityResult
+import com.streamvault.domain.model.ProviderAvailabilityStatus
 import com.streamvault.domain.model.RecordingItem
 import com.streamvault.domain.model.RecordingStorageConfig
 import com.streamvault.domain.model.RecordingStorageState
@@ -63,6 +66,7 @@ import com.streamvault.domain.model.EpgResolutionSummary
 import com.streamvault.domain.model.GuideSourcePolicy
 import com.streamvault.domain.model.Result
 import com.streamvault.domain.model.TimeshiftBackendPreference
+import com.streamvault.domain.provider.DEFAULT_M3U_CATCH_UP_QUERY_FORMAT
 import com.streamvault.domain.model.VirtualCategoryIds
 import com.streamvault.domain.model.VodVariantPreferenceMode
 import com.streamvault.domain.usecase.ExportBackup
@@ -74,6 +78,7 @@ import com.streamvault.domain.usecase.ImportBackupResult
 import com.streamvault.domain.usecase.InspectBackupCommand
 import com.streamvault.domain.usecase.InspectBackupResult
 import com.streamvault.domain.repository.ProviderRepository
+import com.streamvault.domain.repository.ProviderAvailabilityRepository
 import com.streamvault.domain.repository.CombinedM3uRepository
 import com.streamvault.domain.repository.CategoryRepository
 import com.streamvault.domain.repository.ChannelRepository
@@ -93,12 +98,14 @@ import kotlinx.coroutines.launch
 import kotlin.math.max
 import javax.inject.Inject
 
+private const val PROVIDER_AVAILABILITY_STALE_AFTER_MILLIS = 5 * 60 * 1000L
 
 @HiltViewModel
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModel @Inject constructor(
     @ApplicationContext application: Context,
     private val providerRepository: ProviderRepository,
+    private val providerAvailabilityRepository: ProviderAvailabilityRepository,
     private val combinedM3uRepository: CombinedM3uRepository,
     private val categoryRepository: CategoryRepository,
     private val channelRepository: ChannelRepository,
@@ -118,11 +125,19 @@ class SettingsViewModel @Inject constructor(
     private val diagnosticsPort: SettingsDiagnosticsPort,
     private val syncProvider: SyncProvider,
     private val epgSourceRepository: com.streamvault.domain.repository.EpgSourceRepository,
+    private val phoneAddSession: com.streamvault.domain.phone.PhoneAddSession,
     private val appUpdatePort: SettingsAppUpdatePort,
     private val getCustomCategories: GetCustomCategories,
     private val audioCompatibilityMemoryStore: AudioCompatibilityMemoryStore,
     private val openSubtitlesAccountManager: OpenSubtitlesAccountManager,
 ) : ViewModel() {
+    val phoneAddState = phoneAddSession.state
+
+    fun startEpgPhoneAdd() {
+        viewModelScope.launch { phoneAddSession.start(com.streamvault.domain.phone.PhoneAddKind.EPG) }
+    }
+
+    fun stopEpgPhoneAdd() = phoneAddSession.stop(com.streamvault.domain.phone.PhoneAddKind.EPG)
     private val appContext = application
     private val exportBackup = ExportBackup(backupManager)
     private val importBackup = ImportBackup(backupManager)
@@ -142,12 +157,26 @@ class SettingsViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+    val appTextSize = preferencesRepository.appTextSize.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5_000), AppTextSize()
+    )
+
+    fun setAppTextSize(value: AppTextSize) {
+        viewModelScope.launch { preferencesRepository.setAppTextSize(value) }
+    }
+
+    private val availabilityChecksInFlight = mutableSetOf<Long>()
     val playerLiveStreamFormatMode: StateFlow<LiveStreamFormatMode> =
         preferencesRepository.playerLiveStreamFormatMode.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = LiveStreamFormatMode.AUTO
         )
+    val m3uCatchUpQueryFormat: StateFlow<String> = preferencesRepository.m3uCatchUpQueryFormat.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        DEFAULT_M3U_CATCH_UP_QUERY_FORMAT
+    )
     private val activeProviderIdFlow = providerRepository.getActiveProvider().map { it?.id }
     private val appUpdateActions = SettingsAppUpdateActions(
         appContext = application,
@@ -159,7 +188,8 @@ class SettingsViewModel @Inject constructor(
         exportBackup = exportBackup,
         importBackup = importBackup,
         uiState = _uiState,
-        stremioAddonSectionLabel = { appContext.getString(R.string.settings_backup_section_stremio_addons) }
+        stremioAddonSectionLabel = { appContext.getString(R.string.settings_backup_section_stremio_addons) },
+        loadRestoreProviders = { providerRepository.getProviders().first() }
     )
     private val driveBackupActions = SettingsDriveBackupActions(
         driveManager = driveBackupSyncManager,
@@ -311,13 +341,16 @@ class SettingsViewModel @Inject constructor(
                 preferencesRepository = preferencesRepository
             ).collect { snapshot ->
                 val previousProviderIds = _uiState.value.providers.map { it.id }.toSet()
-                _uiState.update {
-                    it.applyPreferenceSnapshot(
+                val currentProviderIds = snapshot.providers.map { it.id }.toSet()
+                _uiState.update { state ->
+                    state.applyPreferenceSnapshot(
                         snapshot = snapshot,
                         isRemoteVersionNewer = appUpdatePort::isRemoteVersionNewer,
+                    ).copy(
+                        providerAvailabilityById = state.providerAvailabilityById
+                            .filterKeys { providerId -> providerId in currentProviderIds }
                     )
                 }
-                val currentProviderIds = snapshot.providers.map { it.id }.toSet()
                 val removedIds = previousProviderIds - currentProviderIds
                 if (removedIds.isNotEmpty()) {
                     epgActions.cleanupEpgAssignmentsFor(removedIds)
@@ -436,6 +469,80 @@ class SettingsViewModel @Inject constructor(
 
     fun setActiveProvider(providerId: Long) {
         providerActions.setActiveProvider(viewModelScope, providerId)
+    }
+
+    fun checkProviderAvailability(providerId: Long) {
+        startProviderAvailabilityCheck(providerId, force = true)
+    }
+
+    fun checkProviderAvailabilityIfStale(providerIds: List<Long>) {
+        providerIds.distinct().forEach { providerId ->
+            startProviderAvailabilityCheck(providerId, force = false)
+        }
+    }
+
+    private fun startProviderAvailabilityCheck(providerId: Long, force: Boolean) {
+        val now = System.currentTimeMillis()
+        val previous = _uiState.value.providerAvailabilityById[providerId]
+            ?: ProviderAvailabilityUiState()
+        if (previous.isChecking || providerId in availabilityChecksInFlight) return
+        if (
+            !force && previous.checkedAt > 0L &&
+            now - previous.checkedAt < PROVIDER_AVAILABILITY_STALE_AFTER_MILLIS
+        ) return
+
+        availabilityChecksInFlight += providerId
+        _uiState.update { state ->
+            state.copy(
+                providerAvailabilityById = state.providerAvailabilityById +
+                    (providerId to previous.copy(isChecking = true))
+            )
+        }
+        viewModelScope.launch {
+            try {
+                val result = providerAvailabilityRepository.check(providerId)
+                publishProviderAvailability(providerId, result, isChecking = false)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                publishProviderAvailability(
+                    providerId,
+                    ProviderAvailabilityResult(previous.status, previous.checkedAt),
+                    isChecking = false
+                )
+                throw cancelled
+            } catch (_: Exception) {
+                publishProviderAvailability(
+                    providerId,
+                    ProviderAvailabilityResult(
+                        status = ProviderAvailabilityStatus.UNKNOWN,
+                        checkedAt = System.currentTimeMillis()
+                    ),
+                    isChecking = false
+                )
+            } finally {
+                availabilityChecksInFlight -= providerId
+            }
+        }
+    }
+
+    private fun publishProviderAvailability(
+        providerId: Long,
+        result: ProviderAvailabilityResult,
+        isChecking: Boolean
+    ) {
+        _uiState.update { state ->
+            if (state.providers.none { it.id == providerId }) {
+                state
+            } else {
+                state.copy(
+                    providerAvailabilityById = state.providerAvailabilityById +
+                        (providerId to ProviderAvailabilityUiState(
+                            status = result.status,
+                            checkedAt = result.checkedAt,
+                            isChecking = isChecking
+                        ))
+                )
+            }
+        }
     }
 
     fun setActiveCombinedProfile(profileId: Long) {
@@ -741,6 +848,12 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun setPlayerRefreshRateMatchingEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.setPlayerRefreshRateMatchingEnabled(enabled)
+        }
+    }
+
     fun setPreventStandbyDuringPlayback(prevent: Boolean) {
         viewModelScope.launch {
             preferencesRepository.setPreventStandbyDuringPlayback(prevent)
@@ -870,6 +983,12 @@ class SettingsViewModel @Inject constructor(
     fun setPlayerTimeshiftEnabled(enabled: Boolean) {
         viewModelScope.launch {
             preferencesRepository.setPlayerTimeshiftEnabled(enabled)
+        }
+    }
+
+    fun setM3uCatchUpQueryFormat(format: String) {
+        viewModelScope.launch {
+            preferencesRepository.setM3uCatchUpQueryFormat(format)
         }
     }
 
@@ -1365,6 +1484,7 @@ class SettingsViewModel @Inject constructor(
         onSuccess: (() -> Unit)? = null,
         successMessage: String? = null,
         onFinished: ((Boolean) -> Unit)? = null,
+        plan: com.streamvault.domain.manager.BackupExportPlan = com.streamvault.domain.manager.BackupExportPlan(),
     ) {
         backupActions.exportConfig(
             scope = viewModelScope,
@@ -1372,6 +1492,7 @@ class SettingsViewModel @Inject constructor(
             onSuccess = onSuccess,
             successMessage = successMessage,
             onFinished = onFinished,
+            plan = plan,
         )
     }
 
@@ -1448,18 +1569,16 @@ class SettingsViewModel @Inject constructor(
         val references = state.selectedRestoreProviderIndices.mapNotNull(state.pendingRestoreProviders::getOrNull)
         if (references.isEmpty()) return
         viewModelScope.launch {
+            val configuredProviders = providerRepository.getProviders().first()
+            val providers = references.mapNotNull { configuredProviders.findRestoreSyncProvider(it) }.distinctBy { it.id }
+            if (providers.isEmpty()) {
+                backupActions.dismissRestoreSyncChooser()
+                return@launch
+            }
             _uiState.update { it.copy(isSyncing = true, syncProgress = "Syncing restored providers…", syncCanCancel = false) }
             val failures = mutableListOf<String>()
-            references.forEach { reference ->
-                val provider = _uiState.value.providers.singleOrNull { candidate ->
-                    candidate.serverUrl.trim().trimEnd('/').equals(reference.serverUrl.trim().trimEnd('/'), true) &&
-                        candidate.username.trim() == reference.username.trim() &&
-                        (reference.providerType == null || candidate.type == reference.providerType) &&
-                        candidate.stalkerMacAddress.trim().equals(reference.stalkerMacAddress.orEmpty().trim(), true)
-                }
-                if (provider == null) {
-                    failures += reference.serverUrl
-                } else if (settingsOperations.syncProvider(provider.id, force = true) is Result.Error) {
+            providers.forEach { provider ->
+                if (settingsOperations.syncProvider(provider.id, force = true) is Result.Error) {
                     failures += provider.name
                 }
             }
@@ -1490,8 +1609,8 @@ class SettingsViewModel @Inject constructor(
         driveBackupActions.signOut(viewModelScope)
     }
 
-    fun pushToDrive() {
-        driveBackupActions.pushBackup(viewModelScope)
+    fun pushToDrive(plan: com.streamvault.domain.manager.BackupExportPlan = com.streamvault.domain.manager.BackupExportPlan()) {
+        driveBackupActions.pushBackup(viewModelScope, plan)
     }
 
     fun pullFromDrive() {
