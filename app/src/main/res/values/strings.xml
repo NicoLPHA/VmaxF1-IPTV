@@ -346,6 +346,8 @@
     <string name="nav_sports">Sports</string>
     <string name="stremio_new_episode_channel">New episode notifications</string>
     <string name="stremio_new_episode_count">New episodes: %1$d</string>
+    <string name="tv_channel_favorites_title">Favorites</string>
+    <string name="tv_channel_favorites_description">Your favorite channels, movies, and series</string>
     <string name="nav_f1">F1</string>
     <!-- F1 Screen -->
     <string name="f1_screen_title">Formula 1</string>

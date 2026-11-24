@@ -163,7 +163,7 @@ internal fun AppNavHost(
             actions = actions,
             platformHost = settingsPlatformHost,
             navigationDestinations = navigationDestinations,
-            settingsContent = { backupUri, openOpenSubtitlesSignIn, platformHost, destinations, onBack ->
+            settingsContent = { backupUri, openOpenSubtitlesSignIn, openTrakt, platformHost, destinations, onBack ->
                 SettingsScreen(
                     onNavigate = { route ->
                         AppRouteCodec.decode(route)?.let(onTopLevelDestinationRequested)
@@ -189,6 +189,7 @@ internal fun AppNavHost(
                     },
                     initialBackupImportUri = backupUri,
                     openOpenSubtitlesSignIn = openOpenSubtitlesSignIn,
+                    openTrakt = openTrakt,
                     onCloseApp = onCloseApp
                 )
             },
